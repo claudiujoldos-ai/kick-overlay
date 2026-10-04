@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<title>LiveLayer – Alerte pentru stream</title>
+<style>
+  html, body { margin: 0; width: 100%; height: 100%; background: transparent; overflow: hidden;
+    font-family: "Segoe UI", system-ui, sans-serif; color: #fff; }
+  #wrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    opacity: 0; transition: opacity .4s ease; }
+  #wrap.show { opacity: 1; }
+  #media { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+  video, img { width: var(--size, 100%); height: var(--size, 100%); object-fit: contain; }
+  #cap { --ac: #53fc18; position: absolute; left: 50%; bottom: 7%; transform: translate(-50%, 30px) scale(.9);
+    padding: 14px 34px; border-radius: 18px; text-align: center; white-space: nowrap;
+    background: rgba(6,8,12,.85); border: 2px solid var(--ac);
+    box-shadow: 0 0 40px color-mix(in srgb, var(--ac) 60%, transparent);
+    opacity: 0; transition: all .5s cubic-bezier(.2,1.5,.4,1); }
+  #wrap.show #cap.on { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  #cap .l { font-size: 18px; font-weight: 900; letter-spacing: 6px; color: var(--ac); text-shadow: 0 0 12px var(--ac); }
+  #cap .t { font-size: 44px; font-weight: 900; text-shadow: 0 0 20px color-mix(in srgb, var(--ac) 70%, transparent), 0 3px 6px #000; }
+  #cap .s { font-size: 22px; color: #d5dbe3; }
+</style>
+</head>
+<body>
+  <div id="wrap">
+    <div id="media"></div>
+    <div id="cap"><div class="l"></div><div class="t"></div><div class="s"></div></div>
+  </div>
+<script>
+const wrap = document.getElementById('wrap');
+const media = document.getElementById('media');
+const cap = document.getElementById('cap');
+const queue = [];
+let busy = false;
+
+const COLORS = { follow: null, sub: '#ffc83d', gift: '#ff3df2' };
+
+function next() {
+  const a = queue.shift();
+  if (!a) { busy = false; return; }
+  busy = true;
+
+  document.documentElement.style.setProperty('--size', (a.size || 100) + '%');
+  cap.style.setProperty('--ac', COLORS[a.type] || a.accent || '#53fc18');
+  cap.querySelector('.l').textContent = a.label || '';
+  cap.querySelector('.t').textContent = a.title || '';
+  cap.querySelector('.s').textContent = a.subtitle || '';
+  cap.classList.toggle('on', !!a.showText);
+
+  media.innerHTML = '';
+  let safety;
+  const finish = () => {
+    clearTimeout(safety);
+    wrap.classList.remove('show');
+    setTimeout(() => { media.innerHTML = ''; next(); }, 500);
+  };
+
+  if (a.isImage) {
+    const img = new Image();
+    img.src = a.video;
+    media.appendChild(img);
+    safety = setTimeout(finish, 6000);
+  } else {
+    const v = document.createElement('video');
+    v.src = a.video;
+    v.volume = Math.max(0, Math.min(1, a.volume ?? 1));
+    v.playsInline = true;
+    v.onended = finish;
+    v.onerror = finish;
+    media.appendChild(v);
+    v.play().catch(() => { v.muted = true; v.play().catch(finish); });
+    safety = setTimeout(finish, 120000); // plasă de siguranță: max 2 minute
+  }
+  requestAnimationFrame(() => wrap.classList.add('show'));
+}
+
+const es = new EventSource('/events');
+es.addEventListener('alert', e => {
+  try { queue.push(JSON.parse(e.data)); } catch { return; }
+  if (!busy) next();
+});
+</script>
+</body>
+</html>

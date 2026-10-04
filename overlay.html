@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<title>LiveLayer</title>
+<style>
+  :root {
+    --w: 380px; --fs: 17px; --op: .55; --top: 22%;
+    --neon: #53fc18; --cyan: #00e5ff; --gold: #ffc83d; --pink: #ff3df2;
+    --glow: color-mix(in srgb, var(--neon) 55%, transparent);
+  }
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; color: #fff;
+    font-family: "Segoe UI", system-ui, sans-serif; user-select: none; }
+  #fx { position: absolute; inset: 0; pointer-events: none; }
+
+  /* ---------- statistici ---------- */
+  #stats { position: absolute; top: 14px; left: 14px; width: 268px; padding: 10px 14px 12px;
+    background: rgba(6,8,12,.78); border: 1px solid color-mix(in srgb, var(--neon) 45%, transparent);
+    border-radius: 14px; box-shadow: 0 0 22px -4px var(--glow), inset 0 0 22px -12px var(--glow);
+    font-size: 12.5px; animation: in .5s ease-out; }
+  .st-head { display: flex; align-items: center; gap: 8px; font-weight: 900; letter-spacing: 3px;
+    color: var(--neon); text-shadow: 0 0 10px var(--glow); font-size: 12px; }
+  .st-head .dot { width: 8px; height: 8px; border-radius: 50%; background: #ff2d55;
+    box-shadow: 0 0 10px #ff2d55; animation: blink 1.4s infinite; }
+  .st-head #timer { margin-left: auto; letter-spacing: 1px; color: #fff; font-variant-numeric: tabular-nums; }
+  .st-grid { display: grid; grid-template-columns: repeat(3, 1fr); margin: 8px 0 6px; text-align: center; }
+  .st-grid b { display: block; font-size: 22px; font-weight: 900; color: #fff;
+    text-shadow: 0 0 12px var(--glow); font-variant-numeric: tabular-nums; transition: transform .2s; }
+  .st-grid b.pop { transform: scale(1.35); color: var(--neon); }
+  .st-grid span { color: #9aa4b2; font-size: 10.5px; text-transform: uppercase; letter-spacing: 1px; }
+  .st-last { display: flex; gap: 6px; padding-top: 5px; border-top: 1px solid rgba(255,255,255,.07);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #cfd6df; }
+  .st-last + .st-last { border-top: 0; padding-top: 2px; }
+  .st-last em { color: #8a94a3; font-style: normal; }
+
+  /* ---------- chat ---------- */
+  #chat { position: absolute; left: 14px; top: var(--top); bottom: var(--bottom, 38%); width: var(--w);
+    display: flex; flex-direction: column; justify-content: flex-end; gap: 7px;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 70px); }
+  .msg { --c: var(--neon); position: relative; flex: none;
+    background: rgba(6,8,12,var(--op));
+    border: 0; border-radius: 10px;
+    padding: 7px 11px; font-size: var(--fs); line-height: 1.4; overflow-wrap: anywhere;
+    text-shadow: 0 1px 2px #000;
+    animation: in .3s ease-out; transition: opacity .8s, transform .8s; }
+  .msg.out { opacity: 0; transform: translateX(-24px); }
+  .name { font-weight: 800; margin-right: 7px; color: var(--c); }
+  .badge { display: inline-block; font-size: .75em; line-height: 1; padding: 3px 4px; margin-right: 4px;
+    border-radius: 5px; background: rgba(255,255,255,.1); vertical-align: 2px; }
+  .emote { height: 1.6em; vertical-align: middle; }
+  .plat { display: inline-block; font-size: .62em; line-height: 1; padding: 3px 5px; margin-right: 5px;
+    border-radius: 4px; vertical-align: 3px; font-weight: 900; color: #fff; }
+  .plat.yt { background: #ff0033; }
+  /* evidențieri discrete: doar fundalul puțin mai deschis, fără margini colorate */
+  .msg.mod { background: rgba(30,34,42,calc(var(--op) + .15)); }
+  .msg.host { --c: var(--gold); }
+  .msg.mention { background: rgba(40,40,52,calc(var(--op) + .25)); }
+  .msg.cmd { --c: var(--cyan); }
+  .cmd-tag { display: inline-block; background: var(--cyan); color: #00161a; font-weight: 900;
+    padding: 2px 8px; border-radius: 6px; margin-right: 8px; font-size: .8em; text-shadow: none; }
+  .cmd-by { display: block; font-size: .72em; color: #8fe9f5; margin-top: 2px; }
+
+  /* ---------- alerte ---------- */
+  #alert { --ac: var(--neon); position: absolute; top: 4%; left: 50%; display: flex; align-items: center; gap: 12px;
+    min-width: 260px; max-width: 50%; padding: 10px 20px 13px 14px; border-radius: 12px; overflow: hidden;
+    background: rgba(6,8,12,.88);
+    opacity: 0; transform: translate(-50%, -20px); transition: all .35s ease-out; }
+  #alert.show { opacity: 1; transform: translate(-50%, 0); }
+  #alert.sub { --ac: var(--gold); }
+  #alert.gift { --ac: var(--pink); }
+  .al-icon { font-size: 30px; line-height: 1; }
+  .al-label { font-size: 10px; letter-spacing: 3px; font-weight: 900; color: var(--ac); }
+  .al-title { font-size: 20px; font-weight: 800; line-height: 1.2; margin: 1px 0; text-shadow: 0 1px 3px #000; }
+  .al-sub { font-size: 13px; color: #c9d0d9; }
+  .al-bar { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--ac); transform-origin: left; }
+  #alert.show .al-bar { animation: bar var(--dur, 6s) linear forwards; }
+
+  @keyframes in { from { opacity: 0; transform: translateX(-40px) scale(.96); } to { opacity: 1; transform: none; } }
+  @keyframes pulse { 50% { box-shadow: 0 0 38px 2px var(--pink); } }
+  @keyframes blink { 50% { opacity: .25; } }
+  @keyframes bob { 50% { transform: translateY(-6px) rotate(-6deg); } }
+  @keyframes bar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+  @keyframes shine { to { left: 130%; } }
+</style>
+</head>
+<body>
+  <canvas id="fx"></canvas>
+
+  <div id="stats" style="display:none">
+    <div class="st-head"><span class="dot"></span>LIVE<span id="timer">00:00:00</span></div>
+    <div class="st-grid">
+      <div><b data-s="followers">0</b><span>followeri</span></div>
+      <div><b data-s="subs">0</b><span>sub-uri</span></div>
+      <div><b data-s="messages">0</b><span>mesaje</span></div>
+    </div>
+    <div class="st-last">💚 <span data-s="lastFollower"><em>niciun follower încă</em></span></div>
+    <div class="st-last">⭐ <span data-s="lastSub"><em>niciun sub încă</em></span></div>
+  </div>
+
+  <div id="chat"></div>
+
+  <div id="alert">
+    <div class="al-icon"></div>
+    <div>
+      <div class="al-label"></div>
+      <div class="al-title"></div>
+      <div class="al-sub"></div>
+    </div>
+    <div class="al-bar"></div>
+  </div>
+
+  <script src="overlay.js"></script>
+</body>
+</html>

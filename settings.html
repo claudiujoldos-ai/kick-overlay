@@ -1,0 +1,944 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<title>LiveLayer</title>
+<style>
+  :root { --bg:#07080c; --panel:#0d1016; --panel2:#131821; --line:#1e2430; --txt:#e9edf3; --mut:#7d8796;
+    --neon:#53fc18; --cyan:#00e5ff; --pink:#ff3df2; --gold:#ffc83d; --red:#ff3b5c; }
+  * { box-sizing: border-box; }
+  body { margin: 0; height: 100vh; overflow: hidden; color: var(--txt); font: 14px "Segoe UI", system-ui, sans-serif;
+    background: radial-gradient(1100px 600px at 105% -10%, rgba(83,252,24,.09), transparent 60%),
+                radial-gradient(900px 500px at -10% 115%, rgba(0,229,255,.07), transparent 60%), var(--bg); }
+  .app { display: grid; grid-template-columns: 240px 1fr; height: 100vh; }
+
+  /* ---------- sidebar ---------- */
+  aside { background: rgba(9,11,16,.9); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 18px 12px; }
+  .logo { display: flex; gap: 12px; align-items: center; padding: 4px 8px 22px; }
+  .logo .k { width: 42px; height: 42px; border-radius: 11px; background: var(--neon); color: #031; font-weight: 900; font-size: 25px;
+    display: grid; place-items: center; box-shadow: 0 0 22px rgba(83,252,24,.55); }
+  .logo b { display: block; font-size: 17px; letter-spacing: 3px; }
+  .logo small { color: var(--neon); letter-spacing: 2px; font-size: 11px; font-weight: 700; }
+  nav button { display: flex; gap: 12px; align-items: center; width: 100%; padding: 11px 12px; margin: 2px 0; cursor: pointer;
+    background: none; border: 1px solid transparent; border-radius: 11px; color: var(--mut); font: inherit; text-align: left; transition: .15s; }
+  nav button .ic { width: 22px; text-align: center; font-size: 16px; }
+  nav button:hover { color: var(--txt); background: var(--panel2); }
+  nav button.active { color: var(--neon); background: rgba(83,252,24,.07); border-color: rgba(83,252,24,.35);
+    box-shadow: inset 0 0 18px -6px rgba(83,252,24,.6); }
+  .side-status { margin-top: auto; padding: 12px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line);
+    display: flex; gap: 10px; align-items: center; font-size: 12.5px; line-height: 1.3; }
+  .dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--red); box-shadow: 0 0 10px var(--red); }
+  .side-status.ok .dot { background: var(--neon); box-shadow: 0 0 12px var(--neon); animation: blink 1.6s infinite; }
+  @keyframes blink { 50% { opacity: .4; } }
+
+  /* ---------- conținut ---------- */
+  main { overflow-y: auto; padding: 26px 32px 50px; }
+  main::-webkit-scrollbar { width: 10px; } main::-webkit-scrollbar-thumb { background: #1d2330; border-radius: 10px; }
+  header { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
+  header h1 { margin: 0; font-size: 24px; font-weight: 800; }
+  header h1 span { color: var(--neon); text-shadow: 0 0 16px rgba(83,252,24,.5); }
+  .chips { margin-left: auto; display: flex; gap: 8px; }
+  .chip { padding: 7px 12px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); font-size: 12.5px; color: var(--mut); }
+  .chip b { color: var(--txt); font-variant-numeric: tabular-nums; }
+
+  .tab { display: none; animation: fade .25s ease-out; }
+  .tab.active { display: block; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  .card { background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--line); border-radius: 16px;
+    padding: 20px 22px; margin-bottom: 16px; }
+  .card h3 { margin: 0 0 4px; font-size: 15.5px; display: flex; align-items: center; gap: 8px; }
+  .hint { color: var(--mut); font-size: 12.5px; margin: 0 0 14px; line-height: 1.5; }
+  .field { margin: 14px 0 0; }
+  .lbl { display: flex; justify-content: space-between; margin-bottom: 7px; color: #c6ceda; font-size: 13px; }
+  .lbl output { color: var(--neon); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 18px; }
+  .row { display: flex; gap: 10px; align-items: center; }
+  .row > .grow { flex: 1; }
+
+  input[type=text], input[type=number], select, textarea { width: 100%; padding: 10px 12px; background: #090c11; color: var(--txt);
+    border: 1px solid var(--line); border-radius: 10px; font: inherit; outline: none; transition: .15s; }
+  input:focus, select:focus, textarea:focus { border-color: var(--neon); box-shadow: 0 0 0 3px rgba(83,252,24,.14); }
+  textarea { min-height: 96px; resize: vertical; font-family: Consolas, monospace; font-size: 13px; }
+  select option { background: #0d1016; }
+  input[type=range] { -webkit-appearance: none; width: 100%; height: 6px; border-radius: 6px; background: #1b212b; outline: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%;
+    background: var(--neon); box-shadow: 0 0 12px var(--neon); cursor: pointer; }
+  input[type=color] { width: 54px; height: 38px; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: #090c11; cursor: pointer; }
+
+  .toggle { display: flex; align-items: center; gap: 12px; margin-top: 14px; cursor: pointer; }
+  .toggle input { display: none; }
+  .toggle .sl { flex: none; width: 42px; height: 24px; border-radius: 24px; background: #1d232e; position: relative; transition: .2s; border: 1px solid var(--line); }
+  .toggle .sl::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #7d8796; transition: .2s; }
+  .toggle input:checked + .sl { background: rgba(83,252,24,.2); border-color: var(--neon); box-shadow: 0 0 12px -2px var(--neon); }
+  .toggle input:checked + .sl::after { left: 21px; background: var(--neon); }
+  .toggle small { display: block; color: var(--mut); font-size: 12px; }
+
+  .btn { padding: 10px 15px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel2); color: var(--txt);
+    cursor: pointer; font: inherit; font-weight: 600; white-space: nowrap; transition: .15s; }
+  .btn:hover { border-color: #344052; transform: translateY(-1px); }
+  .btn.primary { background: var(--neon); color: #031; border-color: var(--neon); box-shadow: 0 0 18px -3px rgba(83,252,24,.8); }
+  .btn.primary:hover { box-shadow: 0 0 26px -2px rgba(83,252,24,.9); }
+  .btn.cyan { border-color: rgba(0,229,255,.5); color: var(--cyan); }
+  .btn.gold { border-color: rgba(255,200,61,.5); color: var(--gold); }
+  .btn.pink { border-color: rgba(255,61,242,.5); color: var(--pink); }
+  .btn.danger { color: var(--red); }
+  .btn.small { padding: 7px 11px; font-size: 12.5px; }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .status { margin-top: 14px; padding: 11px 14px; border-radius: 10px; background: rgba(255,59,92,.08); border: 1px solid rgba(255,59,92,.3); color: #ff9aac; }
+  .status.ok { background: rgba(83,252,24,.07); border-color: rgba(83,252,24,.35); color: #a8ff8a; }
+
+  .file { flex: 1; padding: 10px 12px; border-radius: 10px; background: #090c11; border: 1px dashed var(--line); color: var(--mut);
+    font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .cmd-row { display: grid; grid-template-columns: 170px 1fr auto; gap: 10px; margin-top: 10px; }
+  .cmd-row .trig { color: var(--cyan); font-weight: 700; }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .stat { padding: 16px; border-radius: 14px; background: #0a0d12; border: 1px solid var(--line); }
+  .stat b { display: block; font-size: 32px; font-weight: 900; color: var(--neon); text-shadow: 0 0 16px rgba(83,252,24,.45); font-variant-numeric: tabular-nums; }
+  .stat.gold b { color: var(--gold); text-shadow: 0 0 16px rgba(255,200,61,.45); }
+  .stat.pink b { color: var(--pink); text-shadow: 0 0 16px rgba(255,61,242,.45); }
+  .stat.cyan b { color: var(--cyan); text-shadow: 0 0 16px rgba(0,229,255,.45); }
+  .stat span { color: var(--mut); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+  .last { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  .last div { padding: 12px 14px; border-radius: 12px; background: #0a0d12; border: 1px solid var(--line); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .last em { color: var(--mut); font-style: normal; font-size: 12px; display: block; }
+
+  #updBanner { display: none; align-items: center; gap: 16px; margin-bottom: 18px; padding: 16px 20px; border-radius: 16px;
+    background: linear-gradient(100deg, rgba(0,229,255,.14), rgba(83,252,24,.08)); border: 1px solid rgba(0,229,255,.5);
+    box-shadow: 0 0 26px -6px rgba(0,229,255,.6); animation: fade .3s ease-out; }
+  #updBanner.show { display: flex; }
+  #updBanner .big { font-size: 30px; }
+  #updBanner b { color: var(--cyan); }
+  #updBanner .txt { flex: 1; }
+  #updBanner .notes { color: var(--mut); font-size: 12.5px; margin-top: 3px; white-space: pre-line; max-height: 60px; overflow: hidden; }
+  .prog { height: 8px; border-radius: 8px; background: #0a0d12; overflow: hidden; margin-top: 8px; display: none; }
+  .prog i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--cyan), var(--neon)); box-shadow: 0 0 10px var(--cyan); transition: width .3s; }
+  .steps { counter-reset: st; margin: 6px 0 0; padding: 0; list-style: none; }
+  .steps > li { counter-increment: st; position: relative; padding: 0 0 16px 46px; line-height: 1.55; color: #cfd6df; }
+  .steps > li::before { content: counter(st); position: absolute; left: 0; top: -2px; width: 30px; height: 30px; border-radius: 50%;
+    display: grid; place-items: center; font-weight: 900; color: #031; background: var(--neon); }
+  .steps > li:not(:last-child)::after { content: ""; position: absolute; left: 14px; top: 32px; bottom: 4px; width: 2px; background: var(--line); }
+  .steps b { color: #fff; }
+  .steps .row { margin-top: 8px; }
+  .code { font-family: Consolas, monospace; background: #090c11; border: 1px solid var(--line); padding: 2px 8px; border-radius: 6px; color: var(--cyan); }
+  .guide h3 { margin-top: 2px; }
+  kbd { background: #1b212b; border: 1px solid #2a3240; border-bottom-width: 2px; padding: 2px 7px; border-radius: 6px; font-size: 12px; }
+  .keys { display: grid; grid-template-columns: auto 1fr; gap: 10px 14px; align-items: center; }
+  .note { padding: 12px 14px; border-radius: 12px; background: rgba(0,229,255,.06); border: 1px solid rgba(0,229,255,.25); color: #b5f3fb; font-size: 13px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="logo"><div class="k">L</div><div><b>LIVELAYER</b><small>v<span id="appVer">2.3.0</span></small></div></div>
+    <nav>
+      <button data-tab="conn" class="active"><span class="ic">🔌</span>Conexiune</button>
+      <button data-tab="alerts"><span class="ic">🔔</span>Alerte & sunete</button>
+      <button data-tab="stream"><span class="ic">🎬</span>Video pe stream</button>
+      <button data-tab="chat"><span class="ic">💬</span>Chat</button>
+      <button data-tab="filters"><span class="ic">🛡️</span>Filtre</button>
+      <button data-tab="cmds"><span class="ic">⌨️</span>Comenzi</button>
+      <button data-tab="tts"><span class="ic">🗣️</span>Voce (TTS)</button>
+      <button data-tab="stats"><span class="ic">📊</span>Statistici</button>
+      <button data-tab="look"><span class="ic">🎨</span>Aspect</button>
+      <button data-tab="guide"><span class="ic">📖</span>Ghid</button>
+    </nav>
+    <div class="side-status" id="sideStatus"><span class="dot"></span><span id="sideText">Neconectat</span></div>
+  </aside>
+
+  <main>
+    <header>
+      <h1 id="tabTitle">Conexiune</h1>
+      <div class="chips">
+        <div class="chip">💚 <b data-stat="followers">0</b></div>
+        <div class="chip">⭐ <b data-stat="subs">0</b></div>
+        <div class="chip">💬 <b data-stat="messages">0</b></div>
+        <div class="chip">⏱ <b data-stat="timer">00:00:00</b></div>
+      </div>
+    </header>
+
+    <div id="updBanner">
+      <div class="big">🚀</div>
+      <div class="txt">
+        <div id="updTitle">Versiune nouă disponibilă: <b id="updVer"></b></div>
+        <div class="notes" id="updNotes"></div>
+        <div class="prog" id="updProg"><i></i></div>
+      </div>
+      <button class="btn primary" id="updBtn">⬇ Descarcă și instalează</button>
+    </div>
+
+    <!-- ================= CONEXIUNE ================= -->
+    <section class="tab active" id="tab-conn">
+      <div class="card">
+        <h3>Contul tău de Kick</h3>
+        <div id="kickSetup" style="display:none">
+          <p class="hint">Înainte de prima conectare, aplicația trebuie înregistrată o singură dată la Kick.
+            Durează 2 minute. Urmează pașii:</p>
+          <ol class="steps">
+            <li>Deschide pagina pentru dezvoltatori de pe Kick (trebuie să fii logat pe kick.com).
+              Dacă îți cere, activează întâi <b>2FA</b> din Settings → Security.
+              <div class="row"><button class="btn cyan small" data-url="https://kick.com/settings/developer">🌐 Deschide kick.com/settings/developer</button></div></li>
+            <li>Apasă <b>Create App</b> și completează:<br>
+              <b>App Name</b>: un nume unic, de ex. <span class="code">LiveLayer</span> (numele trebuie să nu fie folosit de altcineva pe Kick)<br>
+              <b>Description</b>: <span class="code">Overlay pentru stream: chat pe ecran, alerte, statistici. Citește doar numele contului și al canalului.</span><br>
+              <b>Redirect URL</b>: lipește exact:
+              <div class="row"><input type="text" id="redirectUri" class="grow" readonly><button class="btn small" id="copyRedirect">📋 Copiază</button></div></li>
+            <li>La permisiuni (scopes) bifează <b>Read user information</b> și <b>Read channel information</b>, apoi salvează.</li>
+            <li>Kick îți arată <b>Client ID</b> și <b>Client Secret</b>. Copiază-le aici:
+              <div class="field"><input type="text" id="clientId" placeholder="Client ID"></div>
+              <div class="field"><input type="text" id="clientSecret" placeholder="Client Secret"></div>
+              <div class="row"><button class="btn primary" id="saveKickApp">💾 Salvează</button>
+                <span class="hint" style="margin:0">Nu trimite nimănui Client Secret-ul.</span></div></li>
+          </ol>
+        </div>
+        <div id="loggedOut">
+          <p class="hint">Te loghezi pe pagina oficială Kick, iar aplicația se conectează automat doar la canalul tău.
+            Parola o scrii doar pe kick.com, nu ajunge niciodată în aplicație.</p>
+          <button class="btn primary" id="login" style="font-size:15px;padding:12px 20px">
+            <b style="font-weight:900">K</b>&nbsp; Conectează-te cu Kick</button>
+        </div>
+        <div id="loggedIn" style="display:none">
+          <div class="row">
+            <img id="avatar" alt="" style="width:46px;height:46px;border-radius:50%;object-fit:cover;background:#1b212b;border:2px solid var(--neon)">
+            <div class="grow">
+              <div style="font-size:16px;font-weight:800" id="accName"></div>
+              <div style="color:var(--mut);font-size:12.5px">kick.com/<span id="accSlug"></span></div>
+            </div>
+            <button class="btn danger small" id="logout">Deconectează-te</button>
+          </div>
+        </div>
+        <div class="status" id="status">Neconectat</div>
+        <div class="btns" style="margin-top:10px">
+          <button class="btn small" id="openLog">📄 Deschide jurnalul de erori</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3><span style="background:#ff0033;color:#fff;border-radius:6px;padding:1px 7px;font-size:13px">▶</span> YouTube <small style="color:var(--mut);font-weight:400">(opțional)</small></h3>
+        <div id="ytSetup" style="display:none">
+          <p class="hint">Ca să-ți legi canalul de YouTube, aplicația trebuie înregistrată o singură dată la Google. Durează ~5 minute.</p>
+          <ol class="steps">
+            <li>Deschide Google Cloud Console (logat cu contul Google al canalului) și creează un proiect nou, de ex. <span class="code">LiveLayer</span>.
+              <div class="row"><button class="btn cyan small" data-url="https://console.cloud.google.com/projectcreate">🌐 Creează proiect</button></div></li>
+            <li>Activează <b>YouTube Data API v3</b> pentru proiect (butonul <b>Enable</b> / <b>Activează</b>).
+              <div class="row"><button class="btn cyan small" data-url="https://console.cloud.google.com/apis/library/youtube.googleapis.com">🌐 Deschide YouTube Data API v3</button></div></li>
+            <li>La <b>Google Auth Platform → Branding</b> completează numele <span class="code">LiveLayer</span> și emailul tău. La <b>Audience</b> alege <b>External</b>,
+              apoi apasă <b>Publish app</b> (altfel login-ul expiră după 7 zile).
+              <div class="row"><button class="btn cyan small" data-url="https://console.cloud.google.com/auth/overview">🌐 Deschide Google Auth Platform</button></div></li>
+            <li>La <b>Clients</b> → <b>Create client</b> → tipul <b>Desktop app</b> → nume <span class="code">LiveLayer</span> → <b>Create</b>.
+              <div class="row"><button class="btn cyan small" data-url="https://console.cloud.google.com/auth/clients">🌐 Deschide Clients</button></div></li>
+            <li>Copiază aici <b>Client ID</b> și <b>Client secret</b>:
+              <div class="field"><input type="text" id="gClientId" placeholder="Client ID (se termină cu .apps.googleusercontent.com)"></div>
+              <div class="field"><input type="text" id="gClientSecret" placeholder="Client secret"></div>
+              <div class="row"><button class="btn primary" id="saveGoogleApp">💾 Salvează</button></div></li>
+          </ol>
+        </div>
+        <div id="ytLoggedOut" style="display:none">
+          <p class="hint">Te loghezi cu Google, iar aplicația găsește singură canalul tău. Când intri live pe YouTube, chat-ul apare pe ecran lângă cel de pe Kick.</p>
+          <button class="btn" id="ytLogin" style="background:#ff0033;border-color:#ff0033;color:#fff;font-size:15px;padding:12px 20px">▶&nbsp; Conectează-te cu Google (YouTube)</button>
+          <p class="hint" style="margin-top:10px">Dacă Google spune „aplicația nu este verificată”, apasă <b>Avansat → Accesează LiveLayer</b>. E normal pentru aplicațiile noi.</p>
+        </div>
+        <div id="ytLoggedIn" style="display:none">
+          <div class="row">
+            <img id="ytAvatar" alt="" style="width:46px;height:46px;border-radius:50%;object-fit:cover;background:#1b212b;border:2px solid #ff0033">
+            <div class="grow">
+              <div style="font-size:16px;font-weight:800" id="ytName"></div>
+              <div style="color:var(--mut);font-size:12.5px">Canal YouTube conectat</div>
+            </div>
+            <button class="btn danger small" id="ytLogout">Deconectează-te</button>
+          </div>
+        </div>
+        <div class="status" id="ytStatus" style="display:none"></div>
+      </div>
+      <div class="card">
+        <h3>Test rapid</h3>
+        <p class="hint">Vezi cum arată totul pe ecran înainte de live.</p>
+        <div class="btns">
+          <button class="btn" data-test="follow">💚 Follow</button>
+          <button class="btn gold" data-test="sub">⭐ Sub</button>
+          <button class="btn pink" data-test="gift">🎁 Sub-uri cadou</button>
+          <button class="btn" data-test="chat">💬 Mesaj</button>
+          <button class="btn" data-test="mod">🗡️ Mesaj moderator</button>
+          <button class="btn pink" data-test="mention">📣 Mențiune</button>
+          <button class="btn cyan" data-test="command">⌨️ Comandă</button>
+          <button class="btn" data-test="yt" style="border-color:rgba(255,0,51,.5);color:#ff5c7a">▶ Mesaj YouTube</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Scurtături (merg și din joc)</h3>
+        <div class="keys" style="margin-top:12px">
+          <div><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>K</kbd></div><div>Ascunde / arată overlay-ul</div>
+          <div><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>L</kbd></div><div>Golește chat-ul de pe ecran</div>
+          <div><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd></div><div>Oprește vocea (TTS) care citește acum</div>
+        </div>
+        <p class="note" style="margin-top:16px">🎮 Pune jocul pe <b>Borderless</b> sau <b>Windowed Fullscreen</b>, altfel Windows nu lasă overlay-ul să apară peste el.<br>
+        📺 Dacă în OBS folosești <b>Display Capture</b>, și viewerii văd overlay-ul. Cu <b>Game Capture</b> îl vezi doar tu.</p>
+      </div>
+      <div class="card">
+        <h3>🔄 Actualizări</h3>
+        <div class="row" style="margin-top:10px">
+          <div class="grow">Versiunea instalată: <b id="aboutVer" style="color:var(--neon)"></b><br>
+            <span class="hint" id="updStatus" style="margin:0">Se verifică automat la pornire și la fiecare 2 ore.</span></div>
+          <button class="btn" id="updCheck">Verifică acum</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= ALERTE ================= -->
+    <section class="tab" id="tab-alerts">
+      <div class="card">
+        <h3>Sunete</h3>
+        <div class="field">
+          <div class="lbl">Volum <output data-out="volume" data-fmt="pct"></output></div>
+          <input type="range" data-k="volume" min="0" max="1" step="0.05">
+        </div>
+        <div class="field">
+          <div class="lbl">Sunet la follow</div>
+          <div class="row"><div class="file" id="followSoundName"></div>
+            <button class="btn small" data-pick="followSound">Alege fișier</button>
+            <button class="btn small" data-clear="followSound">Implicit</button>
+            <button class="btn small" data-test="follow">▶</button></div>
+        </div>
+        <div class="field">
+          <div class="lbl">Sunet la sub și sub-uri cadou</div>
+          <div class="row"><div class="file" id="subSoundName"></div>
+            <button class="btn small" data-pick="subSound">Alege fișier</button>
+            <button class="btn small" data-clear="subSound">Implicit</button>
+            <button class="btn small gold" data-test="sub">▶</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Alertă pe ecran</h3>
+        <div class="field">
+          <div class="lbl">Cât stă alerta pe ecran <output data-out="alertDuration" data-fmt="sec"></output></div>
+          <input type="range" data-k="alertDuration" min="3" max="15" step="1">
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= VIDEO PE STREAM ================= -->
+    <section class="tab" id="tab-stream">
+      <div class="card">
+        <h3>🎬 Video doar pe live</h3>
+        <p class="hint">Videoclipurile alese aici apar numai pe stream, prin OBS. Pe ecranul tău nu apar și nu te încurcă în joc.</p>
+        <div class="row">
+          <input type="text" id="streamUrl" class="grow" readonly>
+          <button class="btn primary" id="copyUrl">📋 Copiază linkul</button>
+        </div>
+        <div class="status" id="obsStatus">OBS nu e conectat încă</div>
+        <div class="note" style="margin-top:14px">
+          <b>Cum îl pui în OBS (o singură dată):</b><br>
+          1. În OBS, la <b>Surse</b> apasă <b>+</b> → <b>Browser</b> → dă-i un nume, de ex. „Alerte video”.<br>
+          2. La <b>URL</b> lipește linkul de mai sus. Lățime <b>1920</b>, înălțime <b>1080</b>.<br>
+          3. Bifează <b>„Controlează audio prin OBS”</b> (Control audio via OBS), ca muzica din video să se audă pe live.<br>
+          4. Trage sursa în <b>vârful listei</b> de surse, ca să fie peste joc.<br>
+          Aplicația trebuie să fie pornită în timpul live-ului.
+        </div>
+      </div>
+      <div class="card">
+        <h3>Videoclipuri</h3>
+        <p class="hint">Merg MP4, WEBM, MOV, MKV sau GIF. Un WEBM cu fundal transparent arată cel mai bine peste joc.</p>
+        <div class="field">
+          <div class="lbl">⭐ La sub</div>
+          <div class="row"><div class="file" id="subVideoName"></div>
+            <button class="btn small" data-vpick="subVideo">Alege video</button>
+            <button class="btn small" data-vclear="subVideo">Scoate</button>
+            <button class="btn small gold" data-stest="sub">▶ Test în OBS</button></div>
+        </div>
+        <div class="field">
+          <div class="lbl">🎁 La sub-uri cadou <small style="color:var(--mut)">(dacă nu alegi, se folosește video-ul de la sub)</small></div>
+          <div class="row"><div class="file" id="giftVideoName"></div>
+            <button class="btn small" data-vpick="giftVideo">Alege video</button>
+            <button class="btn small" data-vclear="giftVideo">Scoate</button>
+            <button class="btn small pink" data-stest="gift">▶ Test în OBS</button></div>
+        </div>
+        <div class="field">
+          <div class="lbl">💚 La follow <small style="color:var(--mut)">(opțional)</small></div>
+          <div class="row"><div class="file" id="followVideoName"></div>
+            <button class="btn small" data-vpick="followVideo">Alege video</button>
+            <button class="btn small" data-vclear="followVideo">Scoate</button>
+            <button class="btn small" data-stest="follow">▶ Test în OBS</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Setări video</h3>
+        <div class="grid2">
+          <div class="field">
+            <div class="lbl">Volum video pe live <output data-out="streamVideoVolume" data-fmt="pct"></output></div>
+            <input type="range" data-k="streamVideoVolume" min="0" max="1" step="0.05">
+          </div>
+          <div class="field">
+            <div class="lbl">Mărime video <output data-out="streamVideoSize" data-fmt="pctRaw"></output></div>
+            <input type="range" data-k="streamVideoSize" min="20" max="100" step="5">
+          </div>
+        </div>
+        <label class="toggle"><input type="checkbox" data-k="streamShowText"><span class="sl"></span>
+          <span>Afișează numele peste video<small>De exemplu „SUB NOU · NumeleLui”, jos pe ecran</small></span></label>
+      </div>
+    </section>
+
+    <!-- ================= CHAT ================= -->
+    <section class="tab" id="tab-chat">
+      <div class="card">
+        <h3>Mesaje pe ecran</h3>
+        <div class="grid2">
+          <div class="field">
+            <div class="lbl">Mesajul dispare după <output data-out="messageLifetime" data-fmt="life"></output></div>
+            <input type="range" data-k="messageLifetime" min="0" max="120" step="5">
+          </div>
+          <div class="field">
+            <div class="lbl">Mesaje maxime pe ecran <output data-out="maxMessages"></output></div>
+            <input type="range" data-k="maxMessages" min="3" max="30" step="1">
+          </div>
+        </div>
+        <label class="toggle"><input type="checkbox" data-k="chatSound"><span class="sl"></span>
+          <span>Sunet discret la fiecare mesaj<small>Util când nu te uiți la ecran</small></span></label>
+        <label class="toggle"><input type="checkbox" data-k="hideCommandMessages"><span class="sl"></span>
+          <span>Ascunde mesajele care încep cu „!”<small>Comenzile tot funcționează, doar că nu mai apar ca mesaj</small></span></label>
+      </div>
+    </section>
+
+    <!-- ================= FILTRE ================= -->
+    <section class="tab" id="tab-filters">
+      <div class="card">
+        <h3>🤖 Utilizatori ascunși</h3>
+        <p class="hint">Boți sau persoane ale căror mesaje nu vrei să le vezi. Câte un nume pe rând.</p>
+        <textarea data-k="hiddenUsers" data-type="list" placeholder="botrix&#10;kickbot"></textarea>
+      </div>
+      <div class="card">
+        <h3>🚫 Cuvinte interzise</h3>
+        <p class="hint">Câte un cuvânt sau o expresie pe rând.</p>
+        <textarea data-k="bannedWords" data-type="list" placeholder="cuvant1&#10;cuvant2"></textarea>
+        <div class="field">
+          <div class="lbl">Ce fac cu mesajele care le conțin</div>
+          <select data-k="bannedMode">
+            <option value="censor">Le afișez, dar cuvântul devine ****</option>
+            <option value="hide">Nu le afișez deloc</option>
+          </select>
+        </div>
+      </div>
+      <div class="card">
+        <h3>✨ Evidențieri</h3>
+        <label class="toggle"><input type="checkbox" data-k="highlightMentions"><span class="sl"></span>
+          <span>Evidențiază mesajele care te pomenesc<small>Când cineva scrie @numele_tău sau unul din cuvintele de mai jos, mesajul pulsează roz</small></span></label>
+        <div class="field">
+          <div class="lbl">Cuvinte cheie extra (câte unul pe rând)</div>
+          <textarea data-k="highlightKeywords" data-type="list" placeholder="numele tău scurt&#10;poreclă"></textarea>
+        </div>
+        <label class="toggle"><input type="checkbox" data-k="highlightMods"><span class="sl"></span>
+          <span>Evidențiază moderatorii<small>Mesajele lor au fundal colorat. Mesajele tale apar mereu cu auriu.</small></span></label>
+      </div>
+    </section>
+
+    <!-- ================= COMENZI ================= -->
+    <section class="tab" id="tab-cmds">
+      <div class="card">
+        <h3>Comenzi personalizate</h3>
+        <p class="hint">Când cineva scrie comanda în chat, răspunsul apare pe ecranul tău ca un card albastru.
+          Poți folosi <b>{user}</b> ca să apară numele celui care a cerut. Răspunsul nu se trimite în chat-ul Kick.</p>
+        <div id="cmdList"></div>
+        <div class="btns" style="margin-top:14px">
+          <button class="btn cyan" id="addCmd">+ Adaugă comandă</button>
+          <button class="btn" data-test="command">▶ Testează prima comandă</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Anti-spam</h3>
+        <div class="field">
+          <div class="lbl">Aceeași comandă poate fi afișată o dată la <output data-out="commandCooldown" data-fmt="sec"></output></div>
+          <input type="range" data-k="commandCooldown" min="0" max="300" step="5">
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= TTS ================= -->
+    <section class="tab" id="tab-tts">
+      <div class="card">
+        <h3>Voce (text-to-speech)</h3>
+        <label class="toggle"><input type="checkbox" data-k="ttsEnabled"><span class="sl"></span>
+          <span>Activează vocea<small>Apasă <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> ca să oprești un mesaj care se citește</small></span></label>
+        <div class="grid2">
+          <div class="field">
+            <div class="lbl">Ce mesaje se citesc</div>
+            <select data-k="ttsMode">
+              <option value="command">Doar cele cu comanda (ex: !tts salut)</option>
+              <option value="subs">Toate mesajele abonaților</option>
+              <option value="all">Toate mesajele</option>
+            </select>
+          </div>
+          <div class="field">
+            <div class="lbl">Comanda pentru voce</div>
+            <input type="text" data-k="ttsCommand" placeholder="!tts">
+          </div>
+        </div>
+        <label class="toggle"><input type="checkbox" data-k="ttsReadAlerts"><span class="sl"></span>
+          <span>Citește și alertele<small>De exemplu: „X s-a abonat! Mulțumesc!”</small></span></label>
+      </div>
+      <div class="card">
+        <h3>Setări voce</h3>
+        <div class="field">
+          <div class="lbl">Vocea</div>
+          <select data-k="ttsVoice" id="voiceSelect"></select>
+        </div>
+        <div class="grid3">
+          <div class="field">
+            <div class="lbl">Viteză <output data-out="ttsRate" data-fmt="x"></output></div>
+            <input type="range" data-k="ttsRate" min="0.5" max="2" step="0.1">
+          </div>
+          <div class="field">
+            <div class="lbl">Volum voce <output data-out="ttsVolume" data-fmt="pct"></output></div>
+            <input type="range" data-k="ttsVolume" min="0" max="1" step="0.05">
+          </div>
+          <div class="field">
+            <div class="lbl">Lungime maximă <output data-out="ttsMaxLength" data-fmt="chr"></output></div>
+            <input type="range" data-k="ttsMaxLength" min="40" max="400" step="10">
+          </div>
+        </div>
+        <div class="field">
+          <div class="lbl">Încearcă vocea</div>
+          <div class="row">
+            <input type="text" id="ttsTestText" class="grow" value="Salut! Mulțumesc pentru follow, bine ai venit pe stream!">
+            <button class="btn primary" id="ttsTest">🔊 Citește</button>
+          </div>
+        </div>
+        <p class="hint" style="margin-top:12px">Dacă nu ai o voce românească în listă: Setări Windows → Oră și limbă → Vorbire → Adaugă voci → Română.</p>
+      </div>
+    </section>
+
+    <!-- ================= STATISTICI ================= -->
+    <section class="tab" id="tab-stats">
+      <div class="card">
+        <h3>Sesiunea de live curentă</h3>
+        <p class="hint">Se numără de când ai pornit aplicația sau de la ultima resetare. Testele nu se numără.</p>
+        <div class="stat-grid">
+          <div class="stat"><b data-stat="followers">0</b><span>Followeri noi</span></div>
+          <div class="stat gold"><b data-stat="subs">0</b><span>Sub-uri</span></div>
+          <div class="stat pink"><b data-stat="gifts">0</b><span>Din care cadou</span></div>
+          <div class="stat cyan"><b data-stat="messages">0</b><span>Mesaje</span></div>
+        </div>
+        <div class="last">
+          <div><em>Ultimul follower</em>💚 <span data-stat="lastFollower">—</span></div>
+          <div><em>Ultimul sub</em>⭐ <span data-stat="lastSub">—</span></div>
+        </div>
+        <div class="row" style="margin-top:14px">
+          <div class="grow" style="color:var(--mut)">Durata sesiunii: <b data-stat="timer" style="color:var(--txt)">00:00:00</b></div>
+          <button class="btn danger" id="resetStats">↺ Resetează statisticile</button>
+        </div>
+      </div>
+      <div class="card">
+        <label class="toggle" style="margin-top:0"><input type="checkbox" data-k="showStats"><span class="sl"></span>
+          <span>Afișează panoul de statistici pe ecran<small>Un panou mic în stânga sus, deasupra chat-ului</small></span></label>
+      </div>
+    </section>
+
+    <!-- ================= ASPECT ================= -->
+    <section class="tab" id="tab-look">
+      <div class="card">
+        <h3>Culoare</h3>
+        <div class="row" style="margin-top:10px">
+          <input type="color" data-k="accentColor">
+          <div class="btns">
+            <button class="btn small" data-color="#53fc18">Verde Kick</button>
+            <button class="btn small" data-color="#00e5ff">Cyan</button>
+            <button class="btn small" data-color="#ff3df2">Roz</button>
+            <button class="btn small" data-color="#a855f7">Mov</button>
+            <button class="btn small" data-color="#ff6b1a">Portocaliu</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Chat pe ecran</h3>
+        <div class="grid2">
+          <div class="field">
+            <div class="lbl">Mărime text <output data-out="fontSize" data-fmt="px"></output></div>
+            <input type="range" data-k="fontSize" min="12" max="32" step="1">
+          </div>
+          <div class="field">
+            <div class="lbl">Lățime coloană <output data-out="overlayWidth" data-fmt="px"></output></div>
+            <input type="range" data-k="overlayWidth" min="240" max="800" step="10">
+          </div>
+          <div class="field">
+            <div class="lbl">Fundal mesaje <output data-out="opacity" data-fmt="pct"></output></div>
+            <input type="range" data-k="opacity" min="0" max="0.85" step="0.05">
+          </div>
+          <div class="field">
+            <div class="lbl">Marginea de sus a chat-ului <output data-out="topPercent" data-fmt="pctRaw"></output></div>
+            <input type="range" data-k="topPercent" min="0" max="80" step="1">
+          </div>
+          <div class="field">
+            <div class="lbl">Chat-ul se oprește la (de jos) <output data-out="bottomPercent" data-fmt="pctRaw"></output></div>
+            <input type="range" data-k="bottomPercent" min="0" max="70" step="1">
+          </div>
+        </div>
+        <p class="hint" style="margin-top:10px">Mesajele noi apar jos și urcă în sus. La 38% de jos, chat-ul începe chiar deasupra hărții din GTA (deasupra numelui străzii).</p>
+        <div class="btns" style="margin-top:16px">
+          <button class="btn" data-test="chat">💬 Trimite un mesaj de test</button>
+          <button class="btn pink" data-test="mention">📣 Mențiune de test</button>
+        </div>
+      </div>
+    </section>
+    <!-- ================= GHID ================= -->
+    <section class="tab guide" id="tab-guide">
+      <div class="card">
+        <h3>🚀 Primii pași</h3>
+        <ol class="steps">
+          <li>Mergi la <b>Conexiune</b> și apasă <b>Conectează-te cu Kick</b>. Se deschide kick.com în browser: te loghezi și apeși <b>Allow</b>.
+            Aplicația se conectează singură la canalul tău și te ține minte data viitoare.</li>
+          <li>Apasă butoanele din <b>Test rapid</b> ca să vezi cum arată chat-ul și alertele pe ecran.</li>
+          <li>Din <b>Aspect</b> muți chat-ul unde vrei (sus/jos), îi schimbi mărimea și culoarea.</li>
+        </ol>
+      </div>
+      <div class="card">
+        <h3>▶ YouTube (opțional)</h3>
+        <ol class="steps">
+          <li>La <b>Conexiune</b>, în secțiunea YouTube, apasă <b>Conectează-te cu Google</b> și alege contul canalului tău.
+            Dacă apare „aplicația nu este verificată”, apasă <b>Avansat → Accesează LiveLayer</b>.</li>
+          <li>Pornește live-ul pe YouTube. În maxim 30 de secunde aplicația te găsește live și chat-ul apare pe ecran, cu ▶ roșu lângă nume.</li>
+          <li>Membrii noi apar ca alertă de sub, iar Super Chat-urile ca alertă specială. Comenzile și vocea merg și pentru YouTube.</li>
+        </ol>
+      </div>
+      <div class="card">
+        <h3>🎮 Ca să apară peste joc</h3>
+        <ol class="steps">
+          <li>În setările jocului pune modul de afișare pe <b>Borderless</b> sau <b>Windowed Fullscreen</b>.
+            În modul <b>Fullscreen</b> (exclusiv), Windows nu lasă nimic să apară peste joc.</li>
+          <li>Scurtături care merg din joc: <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> ascunde/arată chat-ul,
+            <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> golește chat-ul, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> oprește vocea.</li>
+          <li>Lasă aplicația pornită cât ești live. Dacă închizi fereastra de setări, se închide tot.</li>
+        </ol>
+      </div>
+      <div class="card">
+        <h3>🎬 Video la sub, doar pe live (OBS)</h3>
+        <ol class="steps">
+          <li>În <b>Video pe stream</b> alege un video pentru sub (și, dacă vrei, pentru sub-uri cadou și follow).</li>
+          <li>Apasă <b>Copiază linkul</b>. În OBS: <b>Surse → + → Browser</b>, lipește linkul la URL, lățime <b>1920</b>, înălțime <b>1080</b>.</li>
+          <li>Bifează <b>„Controlează audio prin OBS”</b> și trage sursa în vârful listei. Apasă <b>Test în OBS</b> ca să verifici.</li>
+        </ol>
+        <p class="note">📺 Cu <b>Display Capture</b> în OBS, viewerii văd și chat-ul de pe ecranul tău. Cu <b>Game Capture</b>, chat-ul îl vezi doar tu.</p>
+      </div>
+      <div class="card">
+        <h3>🗣️ Voce (TTS) în română</h3>
+        <ol class="steps">
+          <li>Windows → <b>Setări → Oră și limbă → Vorbire → Adaugă voci</b> → alege <b>Română</b>.</li>
+          <li>Repornește aplicația. În <b>Voce (TTS)</b> alege vocea românească și apasă <b>Citește</b> ca test.</li>
+        </ol>
+      </div>
+      <div class="card">
+        <h3>❓ Probleme frecvente</h3>
+        <ol class="steps">
+          <li><b>Nu apare chat-ul peste joc:</b> verifică Borderless și că nu ai apăsat din greșeală <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd>.</li>
+          <li><b>Nu se conectează:</b> uită-te la mesajul din căsuța de status de la Conexiune. Apasă <b>Deconectează-te</b> și conectează-te din nou.</li>
+          <li><b>Altceva:</b> apasă <b>Deschide jurnalul de erori</b> (la Conexiune) și trimite conținutul celui care ți-a dat aplicația.</li>
+        </ol>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const kapi = window.api;   // "api" e deja creat de Electron, nu-l redeclarăm
+
+// Orice eroare apare în căsuța de status și în jurnal
+function showError(msg) {
+  const el = document.getElementById('status');
+  if (el) { el.textContent = '⚠ Eroare: ' + msg; el.className = 'status'; }
+  try { kapi && kapi.send('renderer-error', msg); } catch {}
+}
+window.addEventListener('error', e => showError(e.message + (e.lineno ? ` (linia ${e.lineno})` : '')));
+window.addEventListener('unhandledrejection', e => showError(String((e.reason && e.reason.message) || e.reason)));
+if (!kapi) showError('Legătura cu aplicația (preload) nu s-a încărcat. Repornește aplicația.');
+let cfg = {};
+let stats = null;
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// ---------------- tab-uri ----------------
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x === b));
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + b.dataset.tab));
+  $('tabTitle').textContent = b.lastChild.textContent.trim();
+});
+
+// ---------------- status ----------------
+function setStatus({ text, ok }) {
+  $('status').textContent = text;
+  $('status').className = 'status' + (ok ? ' ok' : '');
+  $('sideText').textContent = text;
+  $('sideStatus').className = 'side-status' + (ok ? ' ok' : '');
+}
+kapi.on('status', setStatus);
+
+// ---------------- statistici ----------------
+function fmtTime(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000)), p = n => String(n).padStart(2, '0');
+  return `${p(Math.floor(s / 3600))}:${p(Math.floor(s / 60) % 60)}:${p(s % 60)}`;
+}
+function renderStats() {
+  if (!stats) return;
+  document.querySelectorAll('[data-stat]').forEach(el => {
+    const k = el.dataset.stat;
+    if (k === 'timer') el.textContent = stats.startedAt ? fmtTime(Date.now() - stats.startedAt) : '00:00:00';
+    else if (k === 'lastFollower' || k === 'lastSub') el.textContent = stats[k] || '—';
+    else el.textContent = stats[k] ?? 0;
+  });
+}
+kapi.on('stats', s => { stats = s; renderStats(); });
+setInterval(renderStats, 1000);
+$('resetStats').onclick = () => { if (confirm('Resetezi statisticile sesiunii?')) kapi.send('reset-stats'); };
+
+// ---------------- legare automată a câmpurilor ----------------
+const FMT = {
+  pct: v => Math.round(v * 100) + '%', pctRaw: v => v + '%', sec: v => v + ' sec', px: v => v + ' px',
+  x: v => Number(v).toFixed(1) + 'x', chr: v => v + ' caractere', life: v => (Number(v) === 0 ? 'nu dispare' : v + ' sec')
+};
+function readEl(el) {
+  if (el.type === 'checkbox') return el.checked;
+  if (el.dataset.type === 'list') return el.value.split('\n').map(s => s.trim()).filter(Boolean);
+  if (el.type === 'number' || el.type === 'range') return Number(el.value);
+  return el.value;
+}
+function writeEl(el, v) {
+  if (el.type === 'checkbox') el.checked = !!v;
+  else if (el.dataset.type === 'list') el.value = (v || []).join('\n');
+  else el.value = v ?? '';
+}
+function renderOutputs() {
+  document.querySelectorAll('[data-out]').forEach(o => {
+    const v = cfg[o.dataset.out];
+    o.textContent = FMT[o.dataset.fmt] ? FMT[o.dataset.fmt](v) : v;
+  });
+  const fname = p => (p ? p.split(/[\\/]/).pop() : 'Sunet implicit (generat de aplicație)');
+  $('followSoundName').textContent = fname(cfg.followSound);
+  $('subSoundName').textContent = fname(cfg.subSound);
+  const vname = p => (p ? p.split(/[\\/]/).pop() : 'Niciun video ales');
+  ['subVideo', 'giftVideo', 'followVideo'].forEach(k => $(k + 'Name').textContent = vname(cfg[k]));
+}
+function renderAll() {
+  document.querySelectorAll('[data-k]').forEach(el => writeEl(el, cfg[el.dataset.k]));
+  renderOutputs();
+  renderCmds();
+}
+async function save(partial) {
+  cfg = await kapi.invoke('save-config', partial);
+  renderOutputs();
+}
+document.querySelectorAll('[data-k]').forEach(el => {
+  const live = el.type === 'range' || el.type === 'color';
+  el.addEventListener(live ? 'input' : 'change', () => {
+    cfg[el.dataset.k] = readEl(el);
+    renderOutputs();
+    save({ [el.dataset.k]: readEl(el) });
+  });
+});
+
+// ---------------- conexiune ----------------
+let hasKickApp = true;
+function setAuth(a) {
+  $('kickSetup').style.display = (!a && !hasKickApp) ? '' : 'none';
+  $('loggedOut').style.display = (a || !hasKickApp) ? 'none' : '';
+  $('loggedIn').style.display = a ? '' : 'none';
+  if (a) {
+    $('accName').textContent = a.name || a.slug;
+    $('accSlug').textContent = a.slug;
+    $('avatar').src = a.avatar || 'build/icon.png';
+  }
+}
+kapi.on('auth', setAuth);
+$('login').onclick = async () => {
+  $('login').disabled = true;
+  try {
+    await kapi.invoke('login');
+  } catch (err) {
+    showError(err.message || String(err));
+  } finally {
+    $('login').disabled = false;
+  }
+};
+document.querySelectorAll('[data-url]').forEach(b => b.onclick = () => kapi.send('open-url', b.dataset.url));
+$('copyRedirect').onclick = () => {
+  kapi.send('copy-text', $('redirectUri').value);
+  $('copyRedirect').textContent = '✔ Copiat';
+  setTimeout(() => $('copyRedirect').textContent = '📋 Copiază', 1500);
+};
+$('saveKickApp').onclick = async () => {
+  const r = await kapi.invoke('save-kick-app', { clientId: $('clientId').value, clientSecret: $('clientSecret').value });
+  if (!r.ok) { setStatus({ text: r.error, ok: false }); return; }
+  $('clientSecret').value = '';
+  hasKickApp = true;
+  setAuth(null);
+};
+// ---------------- YouTube ----------------
+function setYt(s) {
+  if (!s) return;
+  const acc = s.account;
+  $('ytSetup').style.display = (!acc && !s.hasApp) ? '' : 'none';
+  $('ytLoggedOut').style.display = (!acc && s.hasApp) ? '' : 'none';
+  $('ytLoggedIn').style.display = acc ? '' : 'none';
+  if (acc) { $('ytName').textContent = acc.name; $('ytAvatar').src = acc.avatar || 'build/icon.png'; }
+  const st = $('ytStatus');
+  const L = s.live || {};
+  const text = L.state === 'live' ? `🔴 LIVE pe YouTube: ${L.title || ''} · ${L.message || ''}` : (L.message || '');
+  st.style.display = text ? '' : 'none';
+  st.textContent = text;
+  st.className = 'status' + (L.state === 'live' ? ' ok' : '');
+}
+kapi.on('yt-state', setYt);
+$('saveGoogleApp').onclick = async () => {
+  const r = await kapi.invoke('save-google-app', { clientId: $('gClientId').value, clientSecret: $('gClientSecret').value });
+  if (!r.ok) { setYt({ hasApp: false, account: null, live: { state: 'error', message: r.error } }); return; }
+  $('gClientSecret').value = '';
+};
+$('ytLogin').onclick = async () => {
+  $('ytLogin').disabled = true;
+  try {
+    const r = await kapi.invoke('yt-login');
+    if (!r.ok) setYt({ hasApp: true, account: null, live: { state: 'error', message: r.error } });
+  } finally { $('ytLogin').disabled = false; }
+};
+$('ytLogout').onclick = () => { if (confirm('Te deconectezi de la YouTube?')) kapi.send('yt-logout'); };
+
+$('logout').onclick = () => {
+  if (confirm('Te deconectezi de la contul de Kick?')) kapi.send('logout');
+};
+$('openLog').onclick = () => kapi.send('open-log');
+
+// ---------------- sunete ----------------
+document.querySelectorAll('[data-pick]').forEach(b => b.onclick = async () => {
+  const p = await kapi.invoke('pick-sound');
+  if (p) save({ [b.dataset.pick]: p });
+});
+document.querySelectorAll('[data-clear]').forEach(b => b.onclick = () => save({ [b.dataset.clear]: '' }));
+document.querySelectorAll('[data-test]').forEach(b => b.onclick = () => kapi.send('test', b.dataset.test));
+document.querySelectorAll('[data-color]').forEach(b => b.onclick = () => {
+  document.querySelector('[data-k=accentColor]').value = b.dataset.color;
+  save({ accentColor: b.dataset.color });
+});
+
+// ---------------- video pe stream ----------------
+function setStreamInfo(s) {
+  if (!s) return;
+  $('streamUrl').value = s.url;
+  const el = $('obsStatus');
+  if (s.error) { el.textContent = '⚠ ' + s.error; el.className = 'status'; }
+  else if (s.clients > 0) { el.textContent = `✅ OBS conectat (${s.clients} ${s.clients > 1 ? 'surse' : 'sursă'})`; el.className = 'status ok'; }
+  else { el.textContent = 'OBS nu e conectat încă. Adaugă sursa Browser cu linkul de mai sus.'; el.className = 'status'; }
+}
+kapi.on('stream-info', setStreamInfo);
+$('copyUrl').onclick = () => {
+  kapi.send('copy-text', $('streamUrl').value);
+  $('copyUrl').textContent = '✔ Copiat!';
+  setTimeout(() => $('copyUrl').textContent = '📋 Copiază linkul', 1500);
+};
+document.querySelectorAll('[data-vpick]').forEach(b => b.onclick = async () => {
+  const p = await kapi.invoke('pick-video');
+  if (p) save({ [b.dataset.vpick]: p });
+});
+document.querySelectorAll('[data-vclear]').forEach(b => b.onclick = () => save({ [b.dataset.vclear]: '' }));
+document.querySelectorAll('[data-stest]').forEach(b => b.onclick = () => kapi.send('stream-test', b.dataset.stest));
+
+// ---------------- comenzi ----------------
+function normTrigger(t) {
+  t = String(t || '').trim().toLowerCase().split(/\s+/)[0] || '';
+  return t && !t.startsWith('!') ? '!' + t : t;
+}
+function renderCmds() {
+  const list = $('cmdList');
+  list.innerHTML = '';
+  (cfg.commands || []).forEach((c, i) => {
+    const row = document.createElement('div');
+    row.className = 'cmd-row';
+    row.innerHTML = `<input type="text" class="trig" value="${esc(c.trigger)}" placeholder="!comanda">
+      <input type="text" class="resp" value="${esc(c.response)}" placeholder="Textul afișat pe ecran">
+      <button class="btn danger small" title="Șterge">✕</button>`;
+    row.querySelectorAll('input').forEach(inp => inp.onchange = saveCmds);
+    row.querySelector('button').onclick = () => { row.remove(); saveCmds(); };
+    list.appendChild(row);
+  });
+}
+function saveCmds() {
+  const commands = [...document.querySelectorAll('#cmdList .cmd-row')].map(r => ({
+    trigger: normTrigger(r.querySelector('.trig').value),
+    response: r.querySelector('.resp').value.trim()
+  })).filter(c => c.trigger || c.response);
+  document.querySelectorAll('#cmdList .trig').forEach(inp => inp.value = normTrigger(inp.value));
+  cfg.commands = commands;
+  save({ commands });
+}
+$('addCmd').onclick = () => {
+  cfg.commands = [...(cfg.commands || []), { trigger: '', response: '' }];
+  renderCmds();
+  const rows = document.querySelectorAll('#cmdList .trig');
+  rows[rows.length - 1].focus();
+};
+
+// ---------------- voce ----------------
+function loadVoices() {
+  const vs = speechSynthesis.getVoices();
+  const sel = $('voiceSelect');
+  sel.innerHTML = '<option value="">Automat (română, dacă există)</option>' +
+    vs.map(v => `<option value="${esc(v.name)}">${esc(v.name)} — ${esc(v.lang)}</option>`).join('');
+  sel.value = cfg.ttsVoice || '';
+}
+speechSynthesis.onvoiceschanged = loadVoices;
+$('ttsTest').onclick = () => kapi.send('test', 'tts', $('ttsTestText').value);
+
+// ---------------- actualizări ----------------
+function setUpdate(u) {
+  if (!u) return;
+  const banner = $('updBanner'), btn = $('updBtn'), prog = $('updProg'), st = $('updStatus');
+  const showBanner = ['available', 'downloading', 'ready'].includes(u.state);
+  banner.classList.toggle('show', showBanner);
+  if (u.version) $('updVer').textContent = 'v' + u.version;
+  if (u.state === 'available') {
+    $('updNotes').textContent = u.notes || '';
+    btn.disabled = false; btn.textContent = '⬇ Descarcă și instalează';
+    prog.style.display = 'none';
+  }
+  if (u.state === 'downloading') {
+    btn.disabled = true; btn.textContent = `Se descarcă ${u.percent || 0}%`;
+    prog.style.display = 'block'; prog.firstElementChild.style.width = (u.percent || 0) + '%';
+  }
+  if (u.state === 'ready') {
+    btn.disabled = true; btn.textContent = '✔ Se instalează...';
+    prog.firstElementChild.style.width = '100%';
+    $('updNotes').textContent = 'Aplicația se închide și repornește singură în câteva secunde.';
+  }
+  st.textContent = {
+    checking: 'Caut actualizări...',
+    latest: '✅ Ai ultima versiune.',
+    available: `🚀 Versiunea v${u.version} e disponibilă (vezi bannerul de sus).`,
+    downloading: `Se descarcă actualizarea... ${u.percent || 0}%`,
+    ready: 'Actualizarea s-a descărcat, se instalează...',
+    error: '⚠ Nu am putut verifica actualizările: ' + (u.message || ''),
+    dev: 'Actualizările automate merg doar în varianta instalată (.exe).',
+    idle: 'Se verifică automat la pornire și la fiecare 2 ore.'
+  }[u.state] || '';
+}
+kapi.on('update', setUpdate);
+$('updBtn').onclick = () => kapi.send('update-download');
+$('updCheck').onclick = () => kapi.send('update-check');
+
+// ---------------- pornire ----------------
+(async () => {
+  const st = await kapi.invoke('get-state');
+  cfg = st.config;
+  renderAll();
+  loadVoices();
+  setStatus(st.status);
+  hasKickApp = !!st.hasKickApp;
+  $('redirectUri').value = st.redirectUri || 'http://localhost:17777/callback';
+  setAuth(st.auth);
+  setYt(st.yt);
+  if (!st.hasKickApp && !st.auth) setStatus({ text: 'Urmează pașii de mai sus ca să înregistrezi aplicația la Kick (o singură dată).', ok: false });
+  setStreamInfo(st.stream);
+  if (st.version) { $('appVer').textContent = st.version; $('aboutVer').textContent = 'v' + st.version; }
+  setUpdate(st.update);
+  if (st.stats) { stats = st.stats; renderStats(); }
+})();
+</script>
+</body>
+</html>

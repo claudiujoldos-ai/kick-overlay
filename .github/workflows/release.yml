@@ -1,0 +1,47 @@
+# Construiește automat LiveLayer-Setup.exe pe Windows și îl publică în Releases.
+# Pornește singur când apare un tag nou de forma v2.3.0 (sau manual din tab-ul Actions).
+name: Construieste si publica LiveLayer
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Datele aplicațiilor Kick / Google vin din Secrets (nu apar niciodată în cod)
+      - name: Pune datele Kick si Google
+        shell: pwsh
+        env:
+          KICK_CLIENT_ID: ${{ secrets.KICK_CLIENT_ID }}
+          KICK_CLIENT_SECRET: ${{ secrets.KICK_CLIENT_SECRET }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+        run: |
+          if ($env:KICK_CLIENT_ID) {
+            @{ clientId = $env:KICK_CLIENT_ID; clientSecret = $env:KICK_CLIENT_SECRET } | ConvertTo-Json | Set-Content -Encoding utf8 kick-app.json
+            Write-Host "kick-app.json creat"
+          } else { Write-Host "ATENTIE: lipseste secretul KICK_CLIENT_ID" }
+          if ($env:GOOGLE_CLIENT_ID) {
+            @{ clientId = $env:GOOGLE_CLIENT_ID; clientSecret = $env:GOOGLE_CLIENT_SECRET } | ConvertTo-Json | Set-Content -Encoding utf8 google-app.json
+            Write-Host "google-app.json creat"
+          }
+
+      - name: Instaleaza componentele
+        run: npm install
+
+      - name: Construieste si publica .exe
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win nsis --x64 --publish always

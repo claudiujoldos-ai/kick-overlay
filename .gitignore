@@ -1,0 +1,5 @@
+node_modules/
+dist/
+# datele secrete ale aplicațiilor Kick / Google nu se urcă niciodată pe GitHub
+kick-app.json
+google-app.json

@@ -1,0 +1,70 @@
+{
+  "name": "kick-overlay",
+  "productName": "LiveLayer",
+  "version": "2.3.0",
+  "description": "LiveLayer: overlay pentru Kick și YouTube – chat pe ecran peste joc, alerte, statistici, comenzi, TTS și video pe stream",
+  "author": "Jclaudiu",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis --x64 --publish never"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "ro.jclaudiu.kickoverlay",
+    "productName": "LiveLayer",
+    "copyright": "Jclaudiu",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "overlay.html",
+      "overlay.js",
+      "settings.html",
+      "stream-alerts.html",
+      "build/icon.png",
+      "package.json",
+      "kick-app.json",
+      "splash.html",
+      "youtube.js",
+      "google-app.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "artifactName": "LiveLayer-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "LiveLayer",
+      "deleteAppDataOnUninstall": false
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "claudiujoldos-ai",
+        "repo": "kick-overlay",
+        "releaseType": "release"
+      }
+    ]
+  }
+}
