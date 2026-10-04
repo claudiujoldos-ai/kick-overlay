@@ -1,0 +1,20 @@
+# Actualizează doar titlul și descrierea release-ului pentru versiunea din package.json
+name: Actualizeaza descrierea release-ului
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  notes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pune titlul si descrierea
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          v=$(node -p "require('./package.json').version")
+          gh release edit "v$v" --title "LiveLayer $v" --notes-file build/release-notes.md

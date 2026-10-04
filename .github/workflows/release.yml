@@ -45,3 +45,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx electron-builder --win nsis --x64 --publish always
+
+      - name: Pune titlul si descrierea release-ului
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $v = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          gh release edit "v$v" --title "LiveLayer $v" --notes-file build/release-notes.md
