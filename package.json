@@ -65,6 +65,9 @@
         "repo": "kick-overlay",
         "releaseType": "release"
       }
-    ]
+    ],
+    "releaseInfo": {
+      "releaseName": "LiveLayer ${version}"
+    }
   }
 }
