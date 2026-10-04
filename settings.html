@@ -57,7 +57,7 @@
   .row { display: flex; gap: 10px; align-items: center; }
   .row > .grow { flex: 1; }
 
-  input[type=text], input[type=number], select, textarea { width: 100%; padding: 10px 12px; background: #090c11; color: var(--txt);
+  input[type=text], input[type=number], input[type=password], select, textarea { width: 100%; padding: 10px 12px; background: #090c11; color: var(--txt);
     border: 1px solid var(--line); border-radius: 10px; font: inherit; outline: none; transition: .15s; }
   input:focus, select:focus, textarea:focus { border-color: var(--neon); box-shadow: 0 0 0 3px rgba(83,252,24,.14); }
   textarea { min-height: 96px; resize: vertical; font-family: Consolas, monospace; font-size: 13px; }
@@ -134,11 +134,12 @@
 <body>
 <div class="app">
   <aside>
-    <div class="logo"><div class="k">L</div><div><b>LIVELAYER</b><small>v<span id="appVer">2.3.0</span></small></div></div>
+    <div class="logo"><div class="k">L</div><div><b>LIVELAYER</b><small>v<span id="appVer">2.4.0</span></small></div></div>
     <nav>
       <button data-tab="conn" class="active"><span class="ic">🔌</span>Conexiune</button>
       <button data-tab="alerts"><span class="ic">🔔</span>Alerte & sunete</button>
       <button data-tab="stream"><span class="ic">🎬</span>Video pe stream</button>
+      <button data-tab="music"><span class="ic">🎵</span>Muzică (OBS)</button>
       <button data-tab="chat"><span class="ic">💬</span>Chat</button>
       <button data-tab="filters"><span class="ic">🛡️</span>Filtre</button>
       <button data-tab="cmds"><span class="ic">⌨️</span>Comenzi</button>
@@ -273,6 +274,7 @@
           <div><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>K</kbd></div><div>Ascunde / arată overlay-ul</div>
           <div><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>L</kbd></div><div>Golește chat-ul de pe ecran</div>
           <div><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd></div><div>Oprește vocea (TTS) care citește acum</div>
+          <div><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>M</kbd></div><div>Oprește / pornește muzica pe live (OBS)</div>
         </div>
         <p class="note" style="margin-top:16px">🎮 Pune jocul pe <b>Borderless</b> sau <b>Windowed Fullscreen</b>, altfel Windows nu lasă overlay-ul să apară peste el.<br>
         📺 Dacă în OBS folosești <b>Display Capture</b>, și viewerii văd overlay-ul. Cu <b>Game Capture</b> îl vezi doar tu.</p>
@@ -377,6 +379,53 @@
         </div>
         <label class="toggle"><input type="checkbox" data-k="streamShowText"><span class="sl"></span>
           <span>Afișează numele peste video<small>De exemplu „SUB NOU · NumeleLui”, jos pe ecran</small></span></label>
+      </div>
+    </section>
+
+    <!-- ================= MUZICĂ (OBS) ================= -->
+    <section class="tab" id="tab-music">
+      <div class="card">
+        <h3>🎵 Muzica ta, fără strike-uri</h3>
+        <p class="hint">Oprește muzica doar pe live: viewerii n-o mai aud, dar tu o auzi în continuare în căști.
+          Merge cu un click aici sau cu <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> direct din joc.</p>
+        <button class="btn" id="musicToggle" style="width:100%;font-size:18px;padding:18px" disabled>Conectează întâi OBS (mai jos)</button>
+        <div class="status" id="obsStatus2" style="margin-top:12px">OBS nu e conectat</div>
+        <label class="toggle"><input type="checkbox" data-k="musicIndicator"><span class="sl"></span>
+          <span>Arată-mi pe ecran când muzica e oprită pe live<small>Un mic „🔇 Muzica nu se aude pe live” în dreapta sus, doar la tine</small></span></label>
+      </div>
+
+      <div class="card">
+        <h3>Legătura cu OBS</h3>
+        <label class="toggle" style="margin-top:0"><input type="checkbox" data-k="obsEnabled"><span class="sl"></span>
+          <span>Conectează LiveLayer la OBS<small>OBS trebuie să fie pornit</small></span></label>
+        <div class="grid3">
+          <div class="field"><div class="lbl">Adresă</div><input type="text" data-k="obsHost" placeholder="127.0.0.1"></div>
+          <div class="field"><div class="lbl">Port</div><input type="number" data-k="obsPort" placeholder="4455"></div>
+          <div class="field"><div class="lbl">Parolă server WebSocket</div><input type="password" data-k="obsPassword" placeholder="din OBS"></div>
+        </div>
+        <div class="field">
+          <div class="lbl">Sursa de muzică din OBS</div>
+          <div class="row">
+            <select data-k="musicSource" id="musicSource" class="grow"><option value="">— alege sursa —</option></select>
+            <button class="btn small" id="obsRefresh">↻ Reîncarcă lista</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Configurare în OBS (o singură dată)</h3>
+        <ol class="steps">
+          <li>În OBS: <b>Instrumente → Setări server WebSocket</b> (Tools → WebSocket Server Settings). Bifează <b>Activează serverul WebSocket</b>,
+            apasă <b>Arată informațiile de conectare</b> și copiază <b>parola</b> în căsuța de mai sus. Apoi bifează sus <b>Conectează LiveLayer la OBS</b>.</li>
+          <li>Pornește muzica (Spotify, YouTube Music, browserul etc.). În OBS, la <b>Surse</b> → <b>+</b> → <b>Captură audio aplicație (Application Audio Capture)</b>,
+            numește-o <span class="code">Muzică</span> și alege aplicația cu muzica. Apoi alege sursa <b>Muzică</b> în lista de mai sus.</li>
+          <li><b>Important:</b> sunetul „Desktop Audio” prinde tot ce se aude în calculator, deci și muzica. Ca să meargă oprirea,
+            în OBS → <b>Setări → Audio</b> pune <b>Desktop Audio</b> pe <b>Dezactivat</b>, apoi adaugă la Surse o
+            <b>Captură audio aplicație</b> și pentru <b>joc</b> (și una pentru Discord, dacă vrei să se audă).</li>
+          <li>Testează: apasă butonul mare de sus. În OBS, la mixerul audio, sursa <b>Muzică</b> trebuie să apară cu difuzor tăiat, iar tu tot auzi muzica.</li>
+        </ol>
+        <p class="note">🎮 Muzica din jocuri (de ex. radioul din mașini în GTA) face parte din sunetul jocului și nu poate fi separată de aici.
+          Pentru ea folosește opțiunea din joc (volum radio la 0 sau „Streamer mode”, dacă jocul o are).</p>
       </div>
     </section>
 
@@ -606,7 +655,7 @@
           <li>În setările jocului pune modul de afișare pe <b>Borderless</b> sau <b>Windowed Fullscreen</b>.
             În modul <b>Fullscreen</b> (exclusiv), Windows nu lasă nimic să apară peste joc.</li>
           <li>Scurtături care merg din joc: <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> ascunde/arată chat-ul,
-            <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> golește chat-ul, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> oprește vocea.</li>
+            <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> golește chat-ul, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> oprește vocea, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> oprește/pornește muzica pe live.</li>
           <li>Lasă aplicația pornită cât ești live. Dacă închizi fereastra de setări, se închide tot.</li>
         </ol>
       </div>
@@ -771,6 +820,31 @@ $('saveKickApp').onclick = async () => {
   hasKickApp = true;
   setAuth(null);
 };
+// ---------------- Muzică (OBS) ----------------
+let obsState = null;
+function setObs(s) {
+  if (!s) return;
+  obsState = s;
+  const sel = $('musicSource');
+  const cur = cfg.musicSource || '';
+  const names = [...new Set([...(s.inputs || []), ...(cur ? [cur] : [])])];
+  sel.innerHTML = '<option value="">— alege sursa —</option>' + names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  sel.value = cur;
+
+  const st = $('obsStatus2');
+  st.textContent = s.message || (s.state === 'off' ? 'Legătura cu OBS e oprită. Bifează „Conectează LiveLayer la OBS”.' : '');
+  st.className = 'status' + (s.state === 'connected' ? ' ok' : '');
+
+  const b = $('musicToggle');
+  if (s.state !== 'connected') { b.disabled = true; b.textContent = 'Conectează întâi OBS (mai jos)'; b.className = 'btn'; }
+  else if (s.muted === null) { b.disabled = true; b.textContent = 'Alege sursa de muzică (mai jos)'; b.className = 'btn'; }
+  else if (s.muted) { b.disabled = false; b.textContent = '🔇 Muzica e OPRITĂ pe live · apasă ca să se audă'; b.className = 'btn danger'; b.style.borderColor = 'rgba(255,59,92,.6)'; }
+  else { b.disabled = false; b.textContent = '🔊 Muzica SE AUDE pe live · apasă ca s-o oprești'; b.className = 'btn primary'; }
+}
+kapi.on('obs-status', setObs);
+$('musicToggle').onclick = () => kapi.send('obs-cmd', { type: 'toggle' });
+$('obsRefresh').onclick = () => kapi.send('obs-cmd', { type: obsState && obsState.state === 'connected' ? 'refresh' : 'reconnect' });
+
 // ---------------- YouTube ----------------
 function setYt(s) {
   if (!s) return;
@@ -933,6 +1007,7 @@ $('updCheck').onclick = () => kapi.send('update-check');
   $('redirectUri').value = st.redirectUri || 'http://localhost:17777/callback';
   setAuth(st.auth);
   setYt(st.yt);
+  setObs(st.obs);
   if (!st.hasKickApp && !st.auth) setStatus({ text: 'Urmează pașii de mai sus ca să înregistrezi aplicația la Kick (o singură dată).', ok: false });
   setStreamInfo(st.stream);
   if (st.version) { $('appVer').textContent = st.version; $('aboutVer').textContent = 'v' + st.version; }

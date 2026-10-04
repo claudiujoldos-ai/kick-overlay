@@ -93,6 +93,14 @@ const DEFAULTS = {
   streamShowText: true,
   streamPort: 17777,
 
+  // Muzică pe live (OBS WebSocket)
+  obsEnabled: false,
+  obsHost: '127.0.0.1',
+  obsPort: 4455,
+  obsPassword: '',
+  musicSource: '',
+  musicIndicator: true,
+
   // Tehnic
   pusherKey: '32cbd69e4b950bf97679',
   pusherCluster: 'us2'
@@ -121,6 +129,7 @@ let overlayReady;
 let channelInfo = null;
 let lastStatus = { text: 'Neconectat', ok: false };
 let lastStats = null;
+let lastObs = { state: 'off', message: '', inputs: [], muted: null, source: '' };
 
 const toSettings = (ch, data) => {
   if (settingsWin && !settingsWin.isDestroyed()) settingsWin.webContents.send(ch, data);
@@ -608,7 +617,7 @@ app.whenReady().then(() => {
   ipcMain.handle('get-state', () => ({
     config: safeConfig(), status: lastStatus, stats: lastStats, stream: streamInfo(),
     version: app.getVersion(), update: updateState, auth: publicAuth(), hasKickApp: !!kickApp(),
-    redirectUri: redirectUri(), yt: yt.getState()
+    redirectUri: redirectUri(), yt: yt.getState(), obs: lastObs
   }));
   ipcMain.handle('login', async () => {
     try { await loginWithKick(); return { ok: true }; }
@@ -680,6 +689,8 @@ app.whenReady().then(() => {
   ipcMain.on('test', (_e, type, payload) => toOverlay('test', type, payload));
   ipcMain.on('reset-stats', () => toOverlay('reset-stats'));
   ipcMain.on('status', (_e, s) => setStatus(s));
+  ipcMain.on('obs-status', (_e, s) => { lastObs = s; toSettings('obs-status', s); });
+  ipcMain.on('obs-cmd', (_e, c) => toOverlay('obs-cmd', c));
   ipcMain.on('stats', (_e, s) => { lastStats = s; toSettings('stats', s); });
 
   // Scurtături care merg și din joc
@@ -688,6 +699,7 @@ app.whenReady().then(() => {
   });
   globalShortcut.register('CommandOrControl+Shift+L', () => toOverlay('clear'));
   globalShortcut.register('CommandOrControl+Shift+S', () => toOverlay('tts-skip'));
+  globalShortcut.register('CommandOrControl+Shift+M', () => toOverlay('obs-cmd', { type: 'toggle' }));
 
   setTimeout(() => restoreLogin().catch(err => setStatus({ text: err.message, ok: false })), 500);
   setTimeout(() => yt.restore(), 800);

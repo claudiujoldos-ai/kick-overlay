@@ -1,6 +1,6 @@
 Nou în această versiune:
-- ▶ Chat-ul de pe YouTube direct pe ecran, lângă cel de pe Kick (conectare cu Google, doar canalul tău)
-- ⭐ Alerte pentru membri noi și 💰 Super Chat pe YouTube
-- Pașii de configurare YouTube direct în aplicație (Conexiune → YouTube)
+- 🎵 Muzică fără strike-uri: oprești muzica DOAR pe live (viewerii n-o aud, tu o auzi în continuare). Un click în aplicație sau Ctrl+Shift+M direct din joc.
+- 🔇 Indicator discret pe ecranul tău când muzica e oprită pe live.
+- Pașii de configurare în OBS sunt în aplicație, la tab-ul „Muzică (OBS)”.
 
-Instalare: descarcă LiveLayer-Setup.exe de mai jos și rulează-l. Dacă ai deja LiveLayer, aplicația îți propune singură actualizarea.
+Dacă ai deja LiveLayer, aplicația îți propune singură actualizarea.

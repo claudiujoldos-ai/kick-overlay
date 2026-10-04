@@ -33,7 +33,19 @@ function applyConfig() {
 
   const words = (cfg.bannedWords || []).map(w => w.trim()).filter(Boolean);
   bannedRe = words.length ? new RegExp(words.map(escRe).join('|'), 'gi') : null;
+  if (window.LiveLayerOBS) window.LiveLayerOBS.applyConfig(cfg);
 }
+
+// Mesaj scurt în mijlocul ecranului (ex: la Ctrl+Shift+M)
+let toastTimer = null;
+window.LiveLayerToast = text => {
+  const t = document.getElementById('toast');
+  t.textContent = text;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 1600);
+};
+window.api.on('obs-cmd', c => window.LiveLayerOBS && window.LiveLayerOBS.command(c));
 
 function status(text, ok = false) { window.api.send('status', { text, ok }); }
 

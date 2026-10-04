@@ -75,6 +75,13 @@
   .al-bar { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--ac); transform-origin: left; }
   #alert.show .al-bar { animation: bar var(--dur, 6s) linear forwards; }
 
+  #musicPill { position: absolute; top: 14px; right: 14px; padding: 6px 12px; border-radius: 999px;
+    background: rgba(6,8,12,.8); color: #ffb3b3; font-size: 13px; font-weight: 700; text-shadow: 0 1px 2px #000; }
+  #toast { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(.9); opacity: 0;
+    padding: 12px 22px; border-radius: 12px; background: rgba(6,8,12,.9); color: #fff; font-size: 20px; font-weight: 800;
+    transition: all .25s ease; pointer-events: none; }
+  #toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
   @keyframes in { from { opacity: 0; transform: translateX(-40px) scale(.96); } to { opacity: 1; transform: none; } }
   @keyframes pulse { 50% { box-shadow: 0 0 38px 2px var(--pink); } }
   @keyframes blink { 50% { opacity: .25; } }
@@ -99,6 +106,9 @@
 
   <div id="chat"></div>
 
+  <div id="musicPill" style="display:none">🔇 Muzica nu se aude pe live</div>
+  <div id="toast"></div>
+
   <div id="alert">
     <div class="al-icon"></div>
     <div>
@@ -109,6 +119,7 @@
     <div class="al-bar"></div>
   </div>
 
+  <script src="obs-client.js"></script>
   <script src="overlay.js"></script>
 </body>
 </html>

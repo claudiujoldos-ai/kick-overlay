@@ -1,7 +1,7 @@
 {
   "name": "kick-overlay",
   "productName": "LiveLayer",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "LiveLayer: overlay pentru Kick și YouTube – chat pe ecran peste joc, alerte, statistici, comenzi, TTS și video pe stream",
   "author": "Jclaudiu",
   "main": "main.js",
@@ -36,7 +36,8 @@
       "kick-app.json",
       "splash.html",
       "youtube.js",
-      "google-app.json"
+      "google-app.json",
+      "obs-client.js"
     ],
     "win": {
       "target": [
