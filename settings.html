@@ -134,7 +134,7 @@
 <body>
 <div class="app">
   <aside>
-    <div class="logo"><div class="k">L</div><div><b>LIVELAYER</b><small>v<span id="appVer">2.4.0</span></small></div></div>
+    <div class="logo"><div class="k">L</div><div><b>LIVELAYER</b><small>v<span id="appVer">2.4.1</span></small></div></div>
     <nav>
       <button data-tab="conn" class="active"><span class="ic">🔌</span>Conexiune</button>
       <button data-tab="alerts"><span class="ic">🔔</span>Alerte & sunete</button>
@@ -392,6 +392,25 @@
         <div class="status" id="obsStatus2" style="margin-top:12px">OBS nu e conectat</div>
         <label class="toggle"><input type="checkbox" data-k="musicIndicator"><span class="sl"></span>
           <span>Arată-mi pe ecran când muzica e oprită pe live<small>Un mic „🔇 Muzica nu se aude pe live” în dreapta sus, doar la tine</small></span></label>
+      </div>
+
+      <div class="card" id="autoCard">
+        <h3>⚡ Configurare automată OBS (recomandat)</h3>
+        <p class="hint">LiveLayer face singur setările în OBS: creează o sursă doar pentru muzică și una doar pentru joc,
+          iar „Desktop Audio” (care prinde tot și dublează muzica) îl oprește pe live. Tu auzi totul la fel ca înainte.
+          Pornește <b>muzica</b> și <b>jocul</b> înainte să cauți.</p>
+        <button class="btn cyan" id="autoScan">🔍 1. Caută aplicațiile care fac sunet</button>
+        <div id="autoPick" style="display:none">
+          <div class="grid2">
+            <div class="field"><div class="lbl">🎵 Aplicația cu muzica</div><select id="autoMusic"></select></div>
+            <div class="field"><div class="lbl">🎮 Jocul (ca să se audă pe live)</div><select id="autoGame"></select></div>
+          </div>
+          <div class="row" style="margin-top:14px">
+            <button class="btn primary" id="autoApply">⚡ 2. Configurează automat</button>
+            <button class="btn small" id="autoRescan">↻ Caută din nou</button>
+          </div>
+          <p class="hint" style="margin-top:10px">Pentru Discord sau alte aplicații care trebuie să se audă pe live, adaugă-le în OBS ca „Application Audio Capture”.</p>
+        </div>
       </div>
 
       <div class="card">
@@ -830,6 +849,7 @@ function setObs(s) {
   const names = [...new Set([...(s.inputs || []), ...(cur ? [cur] : [])])];
   sel.innerHTML = '<option value="">— alege sursa —</option>' + names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
   sel.value = cur;
+  renderApps(s.apps);
 
   const st = $('obsStatus2');
   st.textContent = s.message || (s.state === 'off' ? 'Legătura cu OBS e oprită. Bifează „Conectează LiveLayer la OBS”.' : '');
@@ -842,6 +862,24 @@ function setObs(s) {
   else { b.disabled = false; b.textContent = '🔊 Muzica SE AUDE pe live · apasă ca s-o oprești'; b.className = 'btn primary'; }
 }
 kapi.on('obs-status', setObs);
+function renderApps(apps) {
+  if (!apps || !apps.length) return;
+  const opts = apps.map(a => `<option value="${esc(a.value)}">${esc(a.name)}</option>`).join('');
+  const keepM = $('autoMusic').value, keepG = $('autoGame').value;
+  $('autoMusic').innerHTML = '<option value="">— alege —</option>' + opts;
+  $('autoGame').innerHTML = '<option value="">— fără joc —</option>' + opts;
+  // ghicim automat: muzica = spotify/browser, jocul = restul aplicațiilor cunoscute
+  const find = re => (apps.find(a => re.test(a.name)) || {}).value || '';
+  $('autoMusic').value = keepM || find(/spotify|music|deezer|tidal|apple|winamp|vlc|foobar|aimp/i) || find(/chrome|msedge|firefox|opera|brave/i);
+  $('autoGame').value = keepG || find(/gta|ragemp|fivem|cs2|valorant|league|fortnite|minecraft|javaw|rocketleague|eldenring|cod|apex|steam_app|game/i);
+  $('autoPick').style.display = '';
+}
+$('autoScan').onclick = $('autoRescan').onclick = () => kapi.send('obs-cmd', { type: 'auto-scan' });
+$('autoApply').onclick = () => {
+  if (!$('autoMusic').value) { alert('Alege aplicația cu muzica.'); return; }
+  kapi.send('obs-cmd', { type: 'auto-apply', music: $('autoMusic').value, game: $('autoGame').value });
+};
+kapi.on('config-changed', c => { Object.assign(cfg, c); if (obsState) setObs(obsState); });
 $('musicToggle').onclick = () => kapi.send('obs-cmd', { type: 'toggle' });
 $('obsRefresh').onclick = () => kapi.send('obs-cmd', { type: obsState && obsState.state === 'connected' ? 'refresh' : 'reconnect' });
 

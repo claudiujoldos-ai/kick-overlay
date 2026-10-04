@@ -691,6 +691,12 @@ app.whenReady().then(() => {
   ipcMain.on('status', (_e, s) => setStatus(s));
   ipcMain.on('obs-status', (_e, s) => { lastObs = s; toSettings('obs-status', s); });
   ipcMain.on('obs-cmd', (_e, c) => toOverlay('obs-cmd', c));
+  ipcMain.on('obs-set-source', (_e, name) => {
+    config.musicSource = String(name || '');
+    saveConfig(config);
+    toOverlay('config', overlayPayload());
+    toSettings('config-changed', { musicSource: config.musicSource });
+  });
   ipcMain.on('stats', (_e, s) => { lastStats = s; toSettings('stats', s); });
 
   // Scurtături care merg și din joc

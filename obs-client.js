@@ -11,7 +11,7 @@
   let retryTimer = null;
   let identified = false;
   const pending = new Map();
-  const state = { state: 'off', message: '', inputs: [], muted: null, source: '' };
+  const state = { state: 'off', message: '', inputs: [], muted: null, source: '', apps: [] };
   const pill = document.getElementById('musicPill');
 
   function push(patch) {
@@ -145,6 +145,94 @@
     }
   }
 
+  // ---------------- Configurare automată ----------------
+  const MUSIC_INPUT = 'LiveLayer – Muzică';
+  const GAME_INPUT = 'LiveLayer – Joc';
+  const APP_KIND = 'wasapi_process_output_capture';
+  const exeOf = v => String(v || '').split(':').pop().toLowerCase();
+
+  async function ensureInput(name) {
+    const list = (await request('GetInputList')).inputs || [];
+    if (list.some(i => i.inputName === name)) return;
+    const cur = await request('GetCurrentProgramScene');
+    await request('CreateInput', {
+      sceneName: cur.currentProgramSceneName || cur.sceneName,
+      inputName: name, inputKind: APP_KIND, inputSettings: { priority: 2 }, sceneItemEnabled: true
+    });
+  }
+
+  async function addToAllScenes(name) {
+    const scenes = (await request('GetSceneList')).scenes || [];
+    for (const s of scenes) {
+      try { await request('GetSceneItemId', { sceneName: s.sceneName, sourceName: name }); }
+      catch { try { await request('CreateSceneItem', { sceneName: s.sceneName, sourceName: name }); } catch {} }
+    }
+  }
+
+  async function autoScan() {
+    try {
+      push({ message: 'Caut aplicațiile care fac sunet...' });
+      await ensureInput(MUSIC_INPUT);
+      const r = await request('GetInputPropertiesListPropertyItems', { inputName: MUSIC_INPUT, propertyName: 'window' });
+      const apps = (r.propertyItems || [])
+        .filter(i => i.itemValue && i.itemEnabled !== false)
+        .map(i => ({ name: i.itemName, value: i.itemValue }));
+      push({ apps, message: apps.length ? 'Alege mai jos aplicația cu muzica și jocul, apoi apasă „Configurează automat”.' : 'Nu am găsit aplicații. Pornește muzica și jocul, apoi caută din nou.' });
+    } catch (e) {
+      push({ message: 'Nu am putut căuta aplicațiile: ' + e.message });
+    }
+  }
+
+  async function autoApply(musicValue, gameValue) {
+    if (!musicValue) { push({ message: 'Alege aplicația cu muzica.' }); return; }
+    const done = [];
+    try {
+      push({ message: 'Configurez OBS...' });
+      // 1. sursa de muzică
+      await ensureInput(MUSIC_INPUT);
+      await request('SetInputSettings', { inputName: MUSIC_INPUT, inputSettings: { window: musicValue, priority: 2 }, overlay: true });
+      await addToAllScenes(MUSIC_INPUT);
+      done.push('sursa „' + MUSIC_INPUT + '”');
+      // 2. sursa jocului (opțional)
+      if (gameValue) {
+        await ensureInput(GAME_INPUT);
+        await request('SetInputSettings', { inputName: GAME_INPUT, inputSettings: { window: gameValue, priority: 2 }, overlay: true });
+        await addToAllScenes(GAME_INPUT);
+        await request('SetInputMute', { inputName: GAME_INPUT, inputMuted: false });
+        done.push('sursa „' + GAME_INPUT + '”');
+      }
+      // 3. Desktop Audio (prinde tot, deci și muzica) -> oprit pe live
+      let muted = 0;
+      const special = await request('GetSpecialInputs').catch(() => ({}));
+      const desktopNames = new Set([special.desktop1, special.desktop2].filter(Boolean));
+      const outs = (await request('GetInputList', { inputKind: 'wasapi_output_capture' })).inputs || [];
+      outs.forEach(i => desktopNames.add(i.inputName));
+      for (const n of desktopNames) {
+        try { await request('SetInputMute', { inputName: n, inputMuted: true }); muted++; } catch {}
+      }
+      // 4. alte capturi ale aceleiași aplicații de muzică -> oprite (altfel se aude dublat)
+      const musicExe = exeOf(musicValue);
+      const apps = (await request('GetInputList', { inputKind: APP_KIND })).inputs || [];
+      for (const i of apps) {
+        if (i.inputName === MUSIC_INPUT || i.inputName === GAME_INPUT) continue;
+        try {
+          const s = await request('GetInputSettings', { inputName: i.inputName });
+          if (exeOf(s.inputSettings && s.inputSettings.window) === musicExe) {
+            await request('SetInputMute', { inputName: i.inputName, inputMuted: true }); muted++;
+          }
+        } catch {}
+      }
+      if (muted) done.push(`${muted} surs${muted > 1 ? 'e' : 'ă'} de tip „Desktop Audio” / dublură oprit${muted > 1 ? 'e' : 'ă'} pe live`);
+      // 5. LiveLayer controlează de acum sursa de muzică
+      window.api.send('obs-set-source', MUSIC_INPUT);
+      cfg.musicSource = MUSIC_INPUT;
+      await refresh();
+      push({ message: '✅ Gata! Am configurat: ' + done.join(', ') + '. Acum apasă butonul mare sau Ctrl+Shift+M.' });
+    } catch (e) {
+      push({ message: 'Configurarea nu a reușit: ' + e.message });
+    }
+  }
+
   window.LiveLayerOBS = {
     applyConfig(c) {
       const key = [c.obsEnabled, c.obsHost, c.obsPort, c.obsPassword].join('|');
@@ -163,6 +251,8 @@
       } else if (t === 'mute') setMuted(true);
       else if (t === 'unmute') setMuted(false);
       else if (t === 'refresh') refresh();
+      else if (t === 'auto-scan') { if (identified) autoScan(); else push({ message: 'Conectează întâi OBS.' }); }
+      else if (t === 'auto-apply') { if (identified) autoApply(cmd.music, cmd.game); else push({ message: 'Conectează întâi OBS.' }); }
       else if (t === 'reconnect') { connKey = ''; this.applyConfig(cfg); }
     },
     getState: () => ({ ...state })

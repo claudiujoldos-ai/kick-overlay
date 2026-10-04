@@ -15,15 +15,15 @@ Aplicația verifică singură la pornire și la fiecare 2 ore. Când găsește o
 ## B. Faci .exe-ul
 1. Dublu-click pe **Construieste-EXE.bat** (în folderul aplicației).
 2. Așteaptă. La final se deschide folderul **dist** cu 3 fișiere:
-   - `LiveLayer-Setup-2.4.0.exe` (installer-ul)
-   - `LiveLayer-Setup-2.4.0.exe.blockmap`
+   - `LiveLayer-Setup-2.4.1.exe` (installer-ul)
+   - `LiveLayer-Setup-2.4.1.exe.blockmap`
    - `latest.yml`
 
 ## C. Publici versiunea pe GitHub (de fiecare dată)
 1. Pe pagina repository-ului → în dreapta, **Releases** → **Create a new release**
    (sau direct: github.com/claudiujoldos-ai/kick-overlay/releases/new)
-2. **Choose a tag** → scrii `v2.4.0` (cu **v** în față, aceeași versiune ca în installer) → *Create new tag*.
-3. *Release title*: de ex. `LiveLayer 2.4.0`
+2. **Choose a tag** → scrii `v2.4.1` (cu **v** în față, aceeași versiune ca în installer) → *Create new tag*.
+3. *Release title*: de ex. `LiveLayer 2.4.1`
 4. În descriere scrii ce e nou. Textul ăsta apare în bannerul de update din aplicație.
 5. Tragi **toate cele 3 fișiere** din `dist` în zona „Attach binaries”.
 6. **Publish release**.
@@ -40,12 +40,12 @@ Linkul duce mereu la ultima versiune.
 ---
 
 ## Când facem o versiune nouă
-1. Îți dau fișierele noi, cu versiunea crescută în `package.json` (de ex. 2.4.0).
+1. Îți dau fișierele noi, cu versiunea crescută în `package.json` (de ex. 2.4.1).
 2. Le pui peste folderul vechi.
-3. Repeți **B** și **C** cu tag-ul nou (`v2.4.0`).
+3. Repeți **B** și **C** cu tag-ul nou (`v2.4.1`).
 
 ⚠ Tag-ul de pe GitHub trebuie să fie identic cu versiunea din `package.json`, cu **v** în față.
-⚠ Prima versiune (2.4.0) trebuie instalată manual cu .exe-ul. De la ea încolo, update-urile vin singure.
+⚠ Prima versiune (2.4.1) trebuie instalată manual cu .exe-ul. De la ea încolo, update-urile vin singure.
 
 ## Notă: Windows SmartScreen
 Fiind o aplicație nouă, nesemnată digital, la prima instalare Windows poate afișa
