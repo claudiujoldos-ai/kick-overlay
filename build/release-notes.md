@@ -1,6 +1,6 @@
 Nou în această versiune:
-- ⚡ Configurare automată OBS pentru muzică: în tab-ul „Muzică (OBS)” cauți aplicațiile, alegi muzica și jocul, iar LiveLayer face singur setările în OBS.
-- Nu se mai aude muzica dublat: „Desktop Audio” și alte capturi ale aceleiași aplicații sunt oprite automat pe live (tu le auzi în continuare).
-- 🎵 Ctrl+Shift+M oprește / pornește muzica doar pe live, direct din joc.
+- 🎛️ Mixer pentru live: în tab-ul „Muzică (OBS)” vezi toate aplicațiile care fac sunet (Chrome, Spotify, Discord, jocul...) și alegi pentru fiecare „🔊 Se aude pe live” sau „🔇 Doar la mine”.
+- Adaugi orice aplicație cu un click; LiveLayer creează singur sursa în OBS, în toate scenele.
+- Avertisment dacă „Desktop Audio” e pornit și ar dubla sunetul.
 
 Dacă ai deja LiveLayer, aplicația îți propune singură actualizarea.

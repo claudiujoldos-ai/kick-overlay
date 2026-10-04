@@ -11,7 +11,7 @@
   let retryTimer = null;
   let identified = false;
   const pending = new Map();
-  const state = { state: 'off', message: '', inputs: [], muted: null, source: '', apps: [] };
+  const state = { state: 'off', message: '', inputs: [], muted: null, source: '', apps: [], mixer: [] };
   const pill = document.getElementById('musicPill');
 
   function push(patch) {
@@ -78,9 +78,13 @@
         st.result ? p.resolve(m.d.responseData || {}) : p.reject(new Error(st.comment || ('cod ' + st.code)));
       } else if (m.op === 5) {                            // Event
         const t = m.d.eventType;
-        if (t === 'InputMuteStateChanged' && m.d.eventData.inputName === cfg.musicSource) {
-          push({ muted: m.d.eventData.inputMuted });
-        } else if (/^Input(Created|Removed|NameChanged)$/.test(t)) {
+        if (t === 'InputMuteStateChanged') {
+          const d = m.d.eventData;
+          const row = (state.mixer || []).find(r => r.name === d.inputName);
+          if (row) row.muted = d.inputMuted;
+          if (d.inputName === cfg.musicSource) push({ muted: d.inputMuted });
+          else if (row) push({});
+        } else if (/^Input(Created|Removed|NameChanged|SettingsChanged)$/.test(t)) {
           refresh();
         }
       }
@@ -128,10 +132,75 @@
       } else {
         message = 'Conectat la OBS. Alege mai jos sursa de muzică.';
       }
-      push({ inputs, muted, message });
+      push({ inputs, muted, message, mixer: await buildMixer(r.inputs || []) });
     } catch (e) {
       push({ message: e.message });
     }
+  }
+
+  // Mixerul pentru live: toate sursele audio pe aplicații + Desktop Audio
+  async function buildMixer(list) {
+    const special = await request('GetSpecialInputs').catch(() => ({}));
+    const desktop = new Set([special.desktop1, special.desktop2].filter(Boolean));
+    const rows = [];
+    for (const i of list) {
+      const isApp = i.inputKind === 'wasapi_process_output_capture';
+      const isDesktop = i.inputKind === 'wasapi_output_capture' || desktop.has(i.inputName);
+      if (!isApp && !isDesktop) continue;
+      let exe = '';
+      if (isApp) {
+        try { exe = exeOf((await request('GetInputSettings', { inputName: i.inputName })).inputSettings.window); } catch {}
+      }
+      let m = false;
+      try { m = (await request('GetInputMute', { inputName: i.inputName })).inputMuted; } catch {}
+      rows.push({ name: i.inputName, exe, muted: m, desktop: isDesktop, ours: i.inputName.startsWith('LiveLayer – ') });
+    }
+    // Desktop Audio primul, apoi aplicațiile
+    return rows.sort((a, b) => (b.desktop - a.desktop) || a.name.localeCompare(b.name));
+  }
+
+  function prettyExe(exe) {
+    const base = String(exe || '').replace(/\.exe$/i, '');
+    const known = { chrome: 'Chrome', msedge: 'Edge', firefox: 'Firefox', opera: 'Opera', brave: 'Brave', spotify: 'Spotify',
+      discord: 'Discord', gta5: 'GTA V', vlc: 'VLC', steam: 'Steam', teamspeak3: 'TeamSpeak', ts3client_win64: 'TeamSpeak' };
+    return known[base.toLowerCase()] || (base.charAt(0).toUpperCase() + base.slice(1)) || 'Aplicație';
+  }
+
+  async function mixerAdd(windowValue, onLive) {
+    try {
+      const exe = exeOf(windowValue);
+      const name = 'LiveLayer – ' + prettyExe(exe);
+      await ensureInput(name);
+      await request('SetInputSettings', { inputName: name, inputSettings: { window: windowValue, priority: 2 }, overlay: true });
+      await addToAllScenes(name);
+      await request('SetInputMute', { inputName: name, inputMuted: !onLive });
+      // Desktop Audio prinde tot -> îl oprim pe live, altfel controlul pe aplicații n-ar avea efect
+      const special = await request('GetSpecialInputs').catch(() => ({}));
+      const outs = (await request('GetInputList', { inputKind: 'wasapi_output_capture' })).inputs || [];
+      for (const n of new Set([special.desktop1, special.desktop2, ...outs.map(o => o.inputName)].filter(Boolean))) {
+        try { await request('SetInputMute', { inputName: n, inputMuted: true }); } catch {}
+      }
+      await refresh();
+      push({ message: `Am adăugat „${prettyExe(exe)}”: ${onLive ? 'se aude pe live' : 'NU se aude pe live (doar la tine)'}.` });
+    } catch (e) {
+      push({ message: 'Nu am putut adăuga aplicația: ' + e.message });
+    }
+  }
+
+  async function mixerSet(name, muted) {
+    try {
+      await request('SetInputMute', { inputName: name, inputMuted: muted });
+      if (name === cfg.musicSource) state.muted = muted;
+      await refresh();
+    } catch (e) {
+      push({ message: 'Nu am putut schimba sursa: ' + e.message });
+    }
+  }
+
+  async function mixerRemove(name) {
+    if (!String(name).startsWith('LiveLayer – ')) { push({ message: 'Pot șterge doar sursele create de LiveLayer.' }); return; }
+    try { await request('RemoveInput', { inputName: name }); await refresh(); }
+    catch (e) { push({ message: 'Nu am putut șterge sursa: ' + e.message }); }
   }
 
   async function setMuted(m) {
@@ -253,6 +322,9 @@
       else if (t === 'refresh') refresh();
       else if (t === 'auto-scan') { if (identified) autoScan(); else push({ message: 'Conectează întâi OBS.' }); }
       else if (t === 'auto-apply') { if (identified) autoApply(cmd.music, cmd.game); else push({ message: 'Conectează întâi OBS.' }); }
+      else if (t === 'mixer-add') { if (identified) mixerAdd(cmd.window, cmd.onLive !== false); }
+      else if (t === 'mixer-set') { if (identified) mixerSet(cmd.name, !!cmd.muted); }
+      else if (t === 'mixer-remove') { if (identified) mixerRemove(cmd.name); }
       else if (t === 'reconnect') { connKey = ''; this.applyConfig(cfg); }
     },
     getState: () => ({ ...state })

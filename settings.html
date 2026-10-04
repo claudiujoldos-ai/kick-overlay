@@ -134,7 +134,7 @@
 <body>
 <div class="app">
   <aside>
-    <div class="logo"><div class="k">L</div><div><b>LIVELAYER</b><small>v<span id="appVer">2.4.1</span></small></div></div>
+    <div class="logo"><div class="k">L</div><div><b>LIVELAYER</b><small>v<span id="appVer">2.5.0</span></small></div></div>
     <nav>
       <button data-tab="conn" class="active"><span class="ic">🔌</span>Conexiune</button>
       <button data-tab="alerts"><span class="ic">🔔</span>Alerte & sunete</button>
@@ -394,6 +394,24 @@
           <span>Arată-mi pe ecran când muzica e oprită pe live<small>Un mic „🔇 Muzica nu se aude pe live” în dreapta sus, doar la tine</small></span></label>
       </div>
 
+      <div class="card" id="mixerCard">
+        <h3>🎛️ Ce se aude pe live</h3>
+        <p class="hint">Fiecare aplicație cu comutatorul ei. <b>🔇 Doar la mine</b> = viewerii n-o aud, tu o auzi în continuare.
+          Modificările se fac instant în OBS.</p>
+        <div id="mixerRows"><p class="hint">Conectează OBS ca să vezi lista.</p></div>
+        <div class="field" style="margin-top:16px">
+          <div class="lbl">Adaugă o aplicație (trebuie să fie pornită și să facă sunet)</div>
+          <div class="row">
+            <select id="mixerApp" class="grow"><option value="">— apasă întâi „Caută aplicații” —</option></select>
+            <button class="btn small" id="mixerScan">🔍 Caută aplicații</button>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <button class="btn primary small" id="mixerAddOn">+ Adaug-o: se aude pe live</button>
+            <button class="btn small" id="mixerAddOff" style="border-color:rgba(255,59,92,.5);color:#ff8aa0">+ Adaug-o: doar la mine</button>
+          </div>
+        </div>
+      </div>
+
       <div class="card" id="autoCard">
         <h3>⚡ Configurare automată OBS (recomandat)</h3>
         <p class="hint">LiveLayer face singur setările în OBS: creează o sursă doar pentru muzică și una doar pentru joc,
@@ -409,7 +427,7 @@
             <button class="btn primary" id="autoApply">⚡ 2. Configurează automat</button>
             <button class="btn small" id="autoRescan">↻ Caută din nou</button>
           </div>
-          <p class="hint" style="margin-top:10px">Pentru Discord sau alte aplicații care trebuie să se audă pe live, adaugă-le în OBS ca „Application Audio Capture”.</p>
+          <p class="hint" style="margin-top:10px">Pentru Discord, Chrome sau alte aplicații, folosește lista „Ce se aude pe live” de mai sus.</p>
         </div>
       </div>
 
@@ -850,6 +868,8 @@ function setObs(s) {
   sel.innerHTML = '<option value="">— alege sursa —</option>' + names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
   sel.value = cur;
   renderApps(s.apps);
+  renderMixerApps(s.apps);
+  renderMixer(s);
 
   const st = $('obsStatus2');
   st.textContent = s.message || (s.state === 'off' ? 'Legătura cu OBS e oprită. Bifează „Conectează LiveLayer la OBS”.' : '');
@@ -862,6 +882,44 @@ function setObs(s) {
   else { b.disabled = false; b.textContent = '🔊 Muzica SE AUDE pe live · apasă ca s-o oprești'; b.className = 'btn primary'; }
 }
 kapi.on('obs-status', setObs);
+
+// ---------------- Mixer pentru live ----------------
+function renderMixer(s) {
+  const box = $('mixerRows');
+  if (!s || s.state !== 'connected') { box.innerHTML = '<p class="hint">Conectează OBS ca să vezi lista.</p>'; return; }
+  const rows = s.mixer || [];
+  if (!rows.length) { box.innerHTML = '<p class="hint">Nu ai încă surse audio pe aplicații. Adaugă una mai jos.</p>'; return; }
+  box.innerHTML = rows.map(r => {
+    const label = r.desktop ? '🖥️ ' + esc(r.name) + ' <small style="color:var(--mut)">(tot sunetul din calculator)</small>'
+      : (r.name === cfg.musicSource ? '🎵 ' : '🔈 ') + esc(r.name) + (r.exe ? ` <small style="color:var(--mut)">${esc(r.exe)}</small>` : '');
+    const btn = r.muted
+      ? `<button class="btn small" data-mix="${esc(r.name)}" data-to="0" style="min-width:170px;border-color:rgba(255,59,92,.6);color:#ff8aa0">🔇 Doar la mine</button>`
+      : `<button class="btn small primary" data-mix="${esc(r.name)}" data-to="1" style="min-width:170px">🔊 Se aude pe live</button>`;
+    const del = r.ours ? `<button class="btn small danger" data-mixdel="${esc(r.name)}" title="Șterge sursa din OBS">✕</button>` : '';
+    return `<div class="row" style="padding:10px 0;border-bottom:1px solid var(--line)"><div class="grow">${label}</div>${btn}${del}</div>`;
+  }).join('');
+  if (rows.some(r => r.desktop && !r.muted) && rows.some(r => !r.desktop)) {
+    box.innerHTML += '<p class="hint" style="margin-top:10px;color:#ffb3b3">⚠ „Desktop Audio” e pornit pe live: el prinde TOT sunetul, deci și aplicațiile oprite mai sus. Pune-l pe „Doar la mine”.</p>';
+  }
+  box.querySelectorAll('[data-mix]').forEach(b => b.onclick = () =>
+    kapi.send('obs-cmd', { type: 'mixer-set', name: b.dataset.mix, muted: b.dataset.to === '1' }));
+  box.querySelectorAll('[data-mixdel]').forEach(b => b.onclick = () => {
+    if (confirm(`Ștergi sursa „${b.dataset.mixdel}” din OBS?`)) kapi.send('obs-cmd', { type: 'mixer-remove', name: b.dataset.mixdel });
+  });
+}
+function renderMixerApps(apps) {
+  if (!apps || !apps.length) return;
+  const sel = $('mixerApp'), keep = sel.value;
+  const seen = new Set();
+  sel.innerHTML = '<option value="">— alege aplicația —</option>' + apps.filter(a => {
+    const exe = a.value.split(':').pop().toLowerCase();
+    if (seen.has(exe)) return false; seen.add(exe); return true;
+  }).map(a => `<option value="${esc(a.value)}">${esc(a.name)}</option>`).join('');
+  sel.value = keep;
+}
+$('mixerScan').onclick = () => kapi.send('obs-cmd', { type: 'auto-scan' });
+$('mixerAddOn').onclick = () => { if ($('mixerApp').value) kapi.send('obs-cmd', { type: 'mixer-add', window: $('mixerApp').value, onLive: true }); else alert('Alege aplicația (apasă întâi „Caută aplicații”).'); };
+$('mixerAddOff').onclick = () => { if ($('mixerApp').value) kapi.send('obs-cmd', { type: 'mixer-add', window: $('mixerApp').value, onLive: false }); else alert('Alege aplicația (apasă întâi „Caută aplicații”).'); };
 function renderApps(apps) {
   if (!apps || !apps.length) return;
   const opts = apps.map(a => `<option value="${esc(a.value)}">${esc(a.name)}</option>`).join('');
