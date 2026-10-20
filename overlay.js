@@ -65,7 +65,10 @@ function connect() {
     let msg; try { msg = JSON.parse(ev.data); } catch { return; }
     handle(msg);
   };
-  ws.onclose = () => {
+  ws.onclose = e => {
+    window.api.send('log', 'Chat Kick închis, cod', e.code, e.reason || '(fără motiv)');
+    // 4000-4099 = Kick/Pusher refuză cheia sau aplicația -> cerem cheia actuală
+    if (e.code >= 4000 && e.code < 4100) window.api.send('pusher-refresh');
     status(`Conexiune pierdută, reîncerc în ${Math.round(reconnectDelay / 1000)}s...`);
     reconnectTimer = setTimeout(connect, reconnectDelay);
     reconnectDelay = Math.min(reconnectDelay * 2, 60000);
@@ -97,6 +100,7 @@ function handle(msg, isTest = false) {
     return;
   }
   if (ev === 'pusher:ping') { send({ event: 'pusher:pong', data: {} }); return; }
+  if (ev === 'pusher:error') { window.api.send('log', 'Eroare chat Kick:', JSON.stringify(data)); return; }
 
   const name = ev.split('\\').pop();   // App\Events\ChatMessageEvent -> ChatMessageEvent
 

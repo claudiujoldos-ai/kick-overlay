@@ -101,10 +101,12 @@ const DEFAULTS = {
   musicSource: '',
   musicIndicator: true,
 
-  // Tehnic
-  pusherKey: '32cbd69e4b950bf97679',
+  // Tehnic – cheia de rezervă pentru chat-ul Kick. Cheia actuală se cere de la Kick la fiecare conectare
+  // (Kick o schimbă din când în când: 32cbd69e... a fost retrasă în oct. 2026).
+  pusherKey: '34bf7a0ff419a2a775b9',
   pusherCluster: 'us2'
 };
+const RETIRED_PUSHER_KEYS = ['eb1d5f283081a78b932c', '32cbd69e4b950bf97679'];
 
 const configPath = () => path.join(app.getPath('userData'), 'config.json');
 function loadConfig() {
@@ -112,6 +114,11 @@ function loadConfig() {
   try { saved = JSON.parse(fs.readFileSync(configPath(), 'utf8')); } catch {}
   const c = { ...DEFAULTS, ...saved };
   if (saved.alertDuration === 6) c.alertDuration = 5; // vechea valoare implicită -> 5 secunde
+  // Cheia de chat salvată de versiunile vechi rămânea blocată în config.json chiar și după update
+  if (!c.pusherKey || RETIRED_PUSHER_KEYS.includes(c.pusherKey)) {
+    c.pusherKey = DEFAULTS.pusherKey;
+    c.pusherCluster = DEFAULTS.pusherCluster;
+  }
   for (const k of ['hiddenUsers', 'bannedWords', 'highlightKeywords', 'commands']) {
     if (!Array.isArray(c[k])) c[k] = DEFAULTS[k];
   }
@@ -410,10 +417,48 @@ const yt = require('./youtube.js')({
   userAgent: CHROME_UA
 });
 
+// Kick schimbă din când în când cheia chat-ului (Pusher). O cerem de la Kick, exact ca site-ul lor.
+async function fetchPusherCreds() {
+  try {
+    const res = await fetch('https://web.kick.com/api/v1/realtime/connection', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'User-Agent': CHROME_UA,
+                 Origin: 'https://kick.com', Referer: 'https://kick.com/' },
+      body: JSON.stringify({ accepted_providers: ['pusher'] }),
+      signal: AbortSignal.timeout(8000)
+    });
+    const text = await res.text();
+    let j = null; try { j = JSON.parse(text); } catch {}
+    const conns = (j && j.data && j.data.connections) || (j && j.connections) || [];
+    for (const c of conns) {
+      const cr = c && c.credentials;
+      if (cr && cr.app_key) {
+        log('Cheie chat Kick primită:', cr.app_key, cr.cluster || 'us2');
+        return { pusherKey: cr.app_key, pusherCluster: cr.cluster || 'us2' };
+      }
+    }
+    log('Cheie chat Kick: răspuns fără cheie, cod', res.status, text.slice(0, 200));
+  } catch (e) {
+    log('Cheie chat Kick: cererea a eșuat', e.message);
+  }
+  return null;
+}
+
+async function refreshPusherCreds() {
+  const creds = await fetchPusherCreds();
+  if (creds && (creds.pusherKey !== config.pusherKey || creds.pusherCluster !== config.pusherCluster)) {
+    config = { ...config, ...creds };
+    saveConfig(config);
+    return true;
+  }
+  return false;
+}
+
 // Se apelează DOAR cu canalul contului logat (vezi loginWithKick / restoreLogin)
 async function connectChannel(slug) {
   setStatus({ text: `Mă conectez la canalul tău (${slug})...`, ok: false });
   channelInfo = await fetchChannel(slug);
+  await refreshPusherCreds();
   await overlayReady;
   toOverlay('connect', overlayPayload());
   return channelInfo;
@@ -689,6 +734,16 @@ app.whenReady().then(() => {
   ipcMain.on('test', (_e, type, payload) => toOverlay('test', type, payload));
   ipcMain.on('reset-stats', () => toOverlay('reset-stats'));
   ipcMain.on('status', (_e, s) => setStatus(s));
+  ipcMain.on('log', (_e, ...a) => log(...a));
+  // Chat-ul a refuzat cheia (cod 4001 etc.): cerem una nouă și reconectăm
+  let refreshingKey = false;
+  ipcMain.on('pusher-refresh', async () => {
+    if (refreshingKey || !channelInfo) return;
+    refreshingKey = true;
+    try {
+      if (await refreshPusherCreds()) toOverlay('connect', overlayPayload());
+    } finally { refreshingKey = false; }
+  });
   ipcMain.on('obs-status', (_e, s) => { lastObs = s; toSettings('obs-status', s); });
   ipcMain.on('obs-cmd', (_e, c) => toOverlay('obs-cmd', c));
   ipcMain.on('obs-set-source', (_e, name) => {
